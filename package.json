@@ -9,7 +9,7 @@
   },
   "devDependencies": {
     "chai": "^5.1.2",
-    "concurrently": "^7.6.0",
+    "concurrently": "^9.2.0",
     "mocha": "^11.0.1"
   },
   "author": "Task Manager Team",
