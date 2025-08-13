@@ -4,6 +4,10 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const connectDB = require('./config/db');
+app.get('/', (req, res) => {
+  res.send('Backend server is running 🚀');
+});
+
 
 dotenv.config();
 
