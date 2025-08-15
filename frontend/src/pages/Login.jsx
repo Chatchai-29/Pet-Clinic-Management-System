@@ -1,13 +1,13 @@
-// frontend/src/pages/Login.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { setToken } from '../utils/auth';
-import { useAuth } from '../context/AuthContext';   // <-- เพิ่ม
+import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
   const nav = useNavigate();
-  const { login } = useAuth();                      // <-- เพิ่ม
+  const { login } = useAuth();
+
   const [form, setForm] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -16,26 +16,35 @@ export default function Login() {
 
   const submit = async (e) => {
     e.preventDefault();
-    setErrorMsg(''); setLoading(true);
+    setErrorMsg('');
+    setLoading(true);
     try {
-      // 1) login -> ได้ token
+      // login
       const res = await api.post('/api/auth/login', form);
-      if (res.data?.token) setToken(res.data.token);
+      if (res.data?.token) {
+        setToken(res.data.token);
 
-      // 2) ใช้ token ดึงโปรไฟล์ปัจจุบัน
-      const me = await api.get('/api/auth/profile');
+       
+        let me;
+        try {
+          me = await api.get('/api/auth/me');
+        } catch {
+          me = await api.get('/api/auth/profile');
+        }
+        login(me.data);
 
-      // 3) อัปเดต AuthContext -> Navbar จะเห็น user และโชว์เมนู
-      login(me.data);
-
-      // 4) ไปหน้าโปรไฟล์
-      nav('/profile');
+        // Dashboard
+        nav('/dashboard');
+      } else {
+        setErrorMsg('Login response missing token');
+      }
     } catch (err) {
       const status = err?.response?.status;
-      setErrorMsg(status === 401 ? 'Invalid email or password'
-        : (err?.response?.data?.message || 'Error during login'));
-      console.error('Login error:', err);
-    } finally { setLoading(false); }
+      if (status === 401) setErrorMsg('Invalid email or password');
+      else setErrorMsg(err?.response?.data?.message || 'Error during login');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -61,7 +70,7 @@ export default function Login() {
               <button type="submit" className="btn btn-primary" disabled={loading}>
                 {loading ? 'Signing in...' : 'Sign in'}
               </button>
-              <button type="button" className="btn btn-secondary" onClick={()=>nav('/register')} disabled={loading}>
+              <button type="button" className="btn btn-secondary" onClick={() => nav('/register')} disabled={loading}>
                 Create account
               </button>
             </div>

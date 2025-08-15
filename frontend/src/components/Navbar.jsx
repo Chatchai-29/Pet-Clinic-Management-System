@@ -12,13 +12,14 @@ const Navbar = () => {
 
   return (
     <nav className="bg-blue-600 text-white p-4 flex justify-between items-center">
-      <Link to="/" className="text-2xl font-bold">
+      <Link to="/Dashboard" className="text-2xl font-bold">
         Pet Clinic Management
       </Link>
 
       <div className="flex items-center space-x-4">
         {user ? (
           <>
+            <Link to="/Dashboard" className="hover:text-gray-200">Dashboard</Link>
             <Link to="/profile" className="hover:text-gray-200">Profile</Link>
             <Link to="/appointments" className="hover:text-gray-200">Appointment</Link>
             <Link to="/owners" className="hover:text-gray-200">Owner</Link>

@@ -8,6 +8,7 @@ import PetPage from './pages/PetPage';
 import OwnerPage from './pages/OwnerPage';
 import AppointmentPage from './pages/AppointmentPage';
 import ProtectedRoute from './components/ProtectedRoute';
+import Dashboard from './pages/Dashboard';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
     <Route path="/pets" element={<PetPage />} />
     <Route path="/owners" element={<OwnerPage />} />
     <Route path="/appointments" element={<AppointmentPage />} />
+    <Route path="/dashboard" element={<Dashboard />} />
     <Route
       path="/profile"
       element={
