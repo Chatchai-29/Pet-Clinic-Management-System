@@ -8,6 +8,60 @@ async function findConflict({ petId, date, time, excludeId }) {
   return Appointment.exists(query);
 }
 
+router.patch('/:id', async (req, res) => {
+  try {
+    const current = await Appointment.findById(req.params.id);
+    if (!current) return res.status(404).json({ message: 'Appointment not found' });
+
+    // ค่าที่จะใช้ตรวจซ้ำ: ถ้า body ไม่ส่งมาก็ใช้ค่าปัจจุบัน
+    const nextPetId = req.body.petId ?? String(current.petId);
+    const nextDate  = req.body.date  ?? current.date;
+    const nextTime  = req.body.time  ?? current.time;
+    const nextStatus = req.body.status ?? current.status;
+
+    if (nextStatus === 'scheduled') {
+      const conflict = await findConflict({
+        petId: nextPetId,
+        date:  nextDate,
+        time:  nextTime,
+        excludeId: current._id
+      });
+      if (conflict) {
+        return res.status(409).json({
+          message: 'Double booking detected: this pet already has an appointment at the same date/time.'
+        });
+      }
+    }
+
+    Object.assign(current, req.body);
+    const saved = await current.save();
+    res.json(saved);
+  } catch (err) {
+    if (err && err.code === 11000) {
+      return res.status(409).json({
+        message: 'Double booking detected by database constraint (pet, date, time).'
+      });
+    }
+    res.status(400).json({ message: err.message });
+  }
+});
+
+router.patch('/:id/cancel', async (req, res) => {
+  try {
+    const updated = await Appointment.findByIdAndUpdate(
+      req.params.id,
+      { status: 'cancelled' },
+      { new: true }
+    ).populate('ownerId', 'name phone')
+     .populate('petId', 'name type');
+
+    if (!updated) return res.status(404).json({ message: 'Appointment not found' });
+    res.json(updated);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
 // GET /appointments  (รองรับ filter)
 router.get('/', async (req, res) => {
   try {

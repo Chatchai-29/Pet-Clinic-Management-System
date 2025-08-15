@@ -19,9 +19,6 @@ app.use('/api/tasks', require('./routes/taskRoutes'));
 app.use('/appointments', require('./routes/appointmentRoutes'));
 app.use('/pets', require('./routes/petRoutes'));
 app.use('/owners', require('./routes/ownerRoutes'));
-app.use('/appointments', require('./routes/appointmentRoutes'));
-
-
 
 // (optional) health check
 app.get('/', (req, res) => {
