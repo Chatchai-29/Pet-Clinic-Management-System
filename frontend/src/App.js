@@ -5,6 +5,7 @@ import Register from './pages/Register';
 import Profile from './pages/Profile';
 import Tasks from './pages/Tasks';
 import PetPage from './pages/PetPage';
+import OwnerPage from './pages/OwnerPage';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/tasks" element={<Tasks />} />
         <Route path="/pets" element={<PetPage />} />
+        <Route path="/owners" element={<OwnerPage />} />
       </Routes>
     </Router>
   );
