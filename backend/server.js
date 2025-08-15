@@ -7,7 +7,7 @@ const connectDB = require('./config/db');
 
 dotenv.config();
 
-const app = express();
+const app = express(); //
 
 // --- Global middleware ---
 app.use(cors());
@@ -17,9 +17,14 @@ app.use(express.json());
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/tasks', require('./routes/taskRoutes'));
 app.use('/appointments', require('./routes/appointmentRoutes'));
+app.use('/pets', require('./routes/petRoutes'));
+app.use('/owners', require('./routes/ownerRoutes'));
 
 
 // (optional) health check
+app.get('/', (req, res) => {
+  res.send('Backend server is running 🚀');
+});
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 // --- Fix Mongoose deprecation ---
@@ -48,4 +53,3 @@ if (require.main === module) {
 
 // Export the app object for testing
 module.exports = app;
-
