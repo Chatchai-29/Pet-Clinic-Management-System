@@ -1,48 +1,70 @@
-import { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+// frontend/src/pages/Login.jsx
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axiosInstance from '../axiosConfig';
+import api from '../api/axios';
+import { setToken } from '../utils/auth';
 
-const Login = () => {
-  const [formData, setFormData] = useState({ email: '', password: '' });
-  const { login } = useAuth();
-  const navigate = useNavigate();
+export default function Login() {
+  const nav = useNavigate();
+  const [form, setForm] = useState({ email: '', password: '' });
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  const handleSubmit = async (e) => {
+  const onChange = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  const submit = async (e) => {
     e.preventDefault();
+    setErrorMsg('');
+    setLoading(true);
     try {
-      const response = await axiosInstance.post('/api/auth/login', formData);
-      login(response.data);
-      navigate('/tasks');
-    } catch (error) {
-      alert('Login failed. Please try again.');
+      const res = await api.post('/api/auth/login', form);
+      if (res.data?.token) setToken(res.data.token);
+      nav('/profile');
+    } catch (err) {
+      
+      const status = err?.response?.status;
+      if (status === 401) {
+        setErrorMsg('Invalid email or password');
+      } else {
+        setErrorMsg(err?.response?.data?.message || 'Error during login');
+      }
+      console.error('Login error:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto mt-20">
-      <form onSubmit={handleSubmit} className="bg-white p-6 shadow-md rounded">
-        <h1 className="text-2xl font-bold mb-4 text-center">Login</h1>
+    <div style={{ padding: 16, maxWidth: 360 }}>
+      <h2>Login</h2>
+
+      {errorMsg && (
+        <div style={{ background:'#ffe9e9', color:'#a40000', padding:8, borderRadius:6, marginBottom:8 }}>
+          {errorMsg}
+        </div>
+      )}
+
+      <form onSubmit={submit} style={{ display:'grid', gap:8 }}>
         <input
           type="email"
           placeholder="Email"
-          value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          className="w-full mb-4 p-2 border rounded"
+          value={form.email}
+          onChange={onChange('email')}
+          required
+          disabled={loading}
         />
         <input
           type="password"
           placeholder="Password"
-          value={formData.password}
-          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-          className="w-full mb-4 p-2 border rounded"
+          value={form.password}
+          onChange={onChange('password')}
+          required
+          disabled={loading}
         />
-        <button type="submit" className="w-full bg-blue-600 text-white p-2 rounded">
-          Login
+        <button type="submit" disabled={loading}>
+          {loading ? 'Signing in...' : 'Sign in'}
         </button>
       </form>
     </div>
   );
-};
-
-export default Login;
+}
