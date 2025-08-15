@@ -30,4 +30,9 @@ const appointmentSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+appointmentSchema.index(
+  { petId: 1, date: 1, time: 1 },
+  { unique: true, partialFilterExpression: { status: 'scheduled' } }
+);
+
 module.exports = mongoose.model('Appointment', appointmentSchema);
