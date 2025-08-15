@@ -16,6 +16,8 @@ app.use(express.json());
 // --- Routes ---
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/tasks', require('./routes/taskRoutes'));
+app.use('/appointments', require('./routes/appointmentRoutes'));
+
 
 // (optional) health check
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
