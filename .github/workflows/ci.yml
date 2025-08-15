@@ -3,74 +3,53 @@ name: Backend CI
 on:
   push:
     branches:
-      - main  # Trigger CI on pushes to the main branch
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   test:
     name: Run Tests
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     strategy:
       matrix:
         node-version: [22]
 
-    environment: MONGO_URI
-
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+    - name: Checkout Code
+      uses: actions/checkout@v4
 
-      # Set up Node.js
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-          cache-dependency-path: |
-            backend/package-lock.json
-            frontend/package-lock.json
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: |
+          backend/package-lock.json
+          frontend/package-lock.json
 
-      - name: Print Env Secret
-        env:
-          MONGO_URI: ${{ secrets.MONGO_URI }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          PORT: ${{ secrets.PORT }}
-        run: |
-          echo "Secret 1 is: $MONGO_URI"
-          echo "Secret 2 is: $JWT_SECRET"
-          echo "Secret 3 is: $PORT"
-      
-      - run: pm2 stop all
+    # Install backend dependencies
+    - name: Install Backend Dependencies
+      working-directory: ./backend
+      run: npm ci
 
-      # Install dependencies for backend
-      - name: Install Backend Dependencies
-        working-directory: ./backend
-        run: |
-          npm install
-      
-      # Install dependencies for frontend
-      - name: Install Frontend Dependencies
-        working-directory: ./frontend
-        run: |
-          df -h
-          sudo rm -rf ./build
-          npm install
-          npm run build
+    # Install frontend dependencies
+    - name: Install Frontend Dependencies
+      working-directory: ./frontend
+      run: npm ci
 
-      # Run backend tests
-      - name: Run Backend Tests
-        env:
-          MONGO_URI: ${{ secrets.MONGO_URI }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          PORT: ${{ secrets.PORT }}
-        working-directory: ./backend
-        run: npm test
+    # Build frontend
+    - name: Build Frontend
+      working-directory: ./frontend
+      run: npm run build
 
-      - run: npm ci
-      - run: |
-          cd ./backend
-          touch .env
-          echo "${{ secrets.PROD }}" > .env
-
-      - run: pm2 start all
-      - run: pm2 restart all
+    # Run backend tests
+    - name: Run Backend Tests
+      working-directory: ./backend
+      env:
+        MONGO_URI: ${{ secrets.MONGO_URI }}
+        JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        PORT: ${{ secrets.PORT }}
+      run: npm test
