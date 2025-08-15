@@ -16,6 +16,7 @@ app.use(express.json());
 // --- Routes ---
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/tasks', require('./routes/taskRoutes'));
+app.use('/pets', require('./routes/petRoutes'));
 app.use('/owners', require('./routes/ownerRoutes'));
 
 // (optional) health check
