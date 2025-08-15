@@ -1,62 +1,48 @@
-# .github/workflows/ci.yml
-name: CI
+name: Backend CI
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
-  build-and-test:
-    runs-on: ubuntu-latest   # <-- เปลี่ยนจาก self-hosted
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest 
 
-    # ให้ CI มี MongoDB ใช้เอง (ไม่ต้องพึ่ง Atlas)
-    services:
-      mongo:
-        image: mongo:6
-        ports:
-          - 27017:27017
-
-    env:
-      # ถ้าต้องการใช้ Atlas ให้เปลี่ยนบรรทัดนี้เป็น:
-      # MONGO_URI: ${{ secrets.MONGO_URI }}
-      MONGO_URI: mongodb://127.0.0.1:27017/petclinic_test?directConnection=true
-      NODE_ENV: test
+    strategy:
+      matrix:
+        node-version: [22] 
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
-          node-version: 22
-          cache: 'yarn'
-          cache-dependency-path: |
-            backend/yarn.lock
-            frontend/yarn.lock
+          node-version: ${{ matrix.node-version }}
 
-      # --- Backend ---
-      - name: Install backend deps
-        working-directory: backend
-        run: yarn install --frozen-lockfile
+      - name: Install Backend Dependencies
+        working-directory: ./backend
+        run: |
+          npm install --global yarn
+          yarn install
 
-      - name: Lint backend (optional)
-        working-directory: backend
-        run: yarn lint || echo "skip lint"
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: |
+          npm install --global yarn
+          yarn install
+          yarn run build
 
-      - name: Test backend (optional)
-        working-directory: backend
-        run: yarn test || echo "skip tests"
-
-      # --- Frontend ---
-      - name: Install frontend deps
-        working-directory: frontend
-        run: yarn install --frozen-lockfile
-
-      - name: Build frontend
-        working-directory: frontend
-        run: yarn build
+      - name: Run Backend Tests
         env:
-          CI: false   # กันเคส CRA ทำ warning = error
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          PORT: ${{ secrets.PORT }}
+        working-directory: ./backend
+        run: npm test
