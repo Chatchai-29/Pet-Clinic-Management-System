@@ -9,9 +9,8 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest   # <-- เปลี่ยนจาก self-hosted
+    runs-on: ubuntu-latest
 
-    # ให้ CI มี MongoDB ใช้เอง (ไม่ต้องพึ่ง Atlas)
     services:
       mongo:
         image: mongo:6
@@ -19,7 +18,6 @@ jobs:
           - 27017:27017
 
     env:
-      # ถ้าต้องการใช้ Atlas ให้เปลี่ยนบรรทัดนี้เป็น:
       # MONGO_URI: ${{ secrets.MONGO_URI }}
       MONGO_URI: mongodb://127.0.0.1:27017/petclinic_test?directConnection=true
       NODE_ENV: test
@@ -59,4 +57,4 @@ jobs:
         working-directory: frontend
         run: yarn build
         env:
-          CI: false   # กันเคส CRA ทำ warning = error
+          CI: false

@@ -1,4 +1,3 @@
-// src/pages/OwnerPage.jsx
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
@@ -9,33 +8,23 @@ export default function OwnerPage() {
   const [formData, setFormData] = useState({ name: '', phone: '' });
   const [editingId, setEditingId] = useState(null);
 
-  useEffect(() => {
-    fetchOwners();
-  }, []);
+  useEffect(() => { fetchOwners(); }, []);
 
   const fetchOwners = async () => {
     try {
       const res = await axios.get(API_BASE);
-      setOwners(res.data);
-    } catch (err) {
-      console.error(err);
-    }
+      setOwners(res.data || []);
+    } catch (err) { console.error(err); }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      if (editingId) {
-        await axios.put(`${API_BASE}/${editingId}`, formData);
-      } else {
-        await axios.post(API_BASE, formData);
-      }
-      setFormData({ name: '', phone: '' });
-      setEditingId(null);
+      if (editingId) await axios.put(`${API_BASE}/${editingId}`, formData);
+      else await axios.post(API_BASE, formData);
+      setFormData({ name: '', phone: '' }); setEditingId(null);
       fetchOwners();
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); alert(err.response?.data?.message || 'Save failed'); }
   };
 
   const handleEdit = (owner) => {
@@ -44,60 +33,73 @@ export default function OwnerPage() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Delete this owner?')) {
-      try {
-        await axios.delete(`${API_BASE}/${id}`);
-        fetchOwners();
-      } catch (err) {
-        console.error(err);
-      }
-    }
+    if (!window.confirm('Delete this owner?')) return;
+    try { await axios.delete(`${API_BASE}/${id}`); fetchOwners(); }
+    catch (err) { console.error(err); alert('Delete failed'); }
   };
 
-  return (
-    <div>
-      <h1>Owner Management</h1>
-      {/* Form */}
-      <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          placeholder="Owner Name"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          required
-        />
-        <input
-          type="text"
-          placeholder="Phone"
-          value={formData.phone}
-          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-          required
-        />
-        <button type="submit">{editingId ? 'Update' : 'Add'} Owner</button>
-      </form>
+  const cancelEdit = () => { setEditingId(null); setFormData({ name: '', phone: '' }); };
 
-      {/* Table */}
-      <table border="1">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Phone</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {owners.map((owner) => (
-            <tr key={owner._id}>
-              <td>{owner.name}</td>
-              <td>{owner.phone}</td>
-              <td>
-                <button onClick={() => handleEdit(owner)}>Edit</button>
-                <button onClick={() => handleDelete(owner._id)}>Delete</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+  return (
+    <div className="container-page">
+      <div className="mb-4">
+        <h1 style={{ margin: 0 }}>Owners</h1>
+        <p className="helper">Manage owner records (list / add / edit / delete)</p>
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card-header">{editingId ? 'Edit owner' : 'Add owner'}</div>
+        <div className="card-body">
+          <form className="form-grid" onSubmit={handleSubmit}>
+            <div>
+              <label>Name</label>
+              <input className="input" placeholder="Owner name"
+                     value={formData.name}
+                     onChange={(e)=>setFormData({ ...formData, name: e.target.value })}
+                     required />
+            </div>
+            <div>
+              <label>Phone</label>
+              <input className="input" placeholder="e.g., 0123456789"
+                     value={formData.phone}
+                     onChange={(e)=>setFormData({ ...formData, phone: e.target.value })}
+                     required />
+            </div>
+            <div className="form-actions" style={{ gridColumn: '1 / -1' }}>
+              <button type="submit" className="btn btn-primary">
+                {editingId ? 'Update owner' : 'Add owner'}
+              </button>
+              {editingId && (
+                <button type="button" className="btn btn-secondary" onClick={cancelEdit}>Cancel</button>
+              )}
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr><th>Name</th><th>Phone</th><th style={{width:200}}>Actions</th></tr>
+          </thead>
+          <tbody>
+            {owners.length === 0 ? (
+              <tr><td className="empty" colSpan="3">No owners</td></tr>
+            ) : owners.map((owner) => (
+              <tr key={owner._id}>
+                <td>{owner.name}</td>
+                <td>{owner.phone}</td>
+                <td>
+                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                    <button className="btn btn-ghost" onClick={()=>handleEdit(owner)}>Edit</button>
+                    <button className="btn btn-danger" onClick={()=>handleDelete(owner._id)}>Delete</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+// frontend/src/pages/Profile.jsx
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api/axios'; // <- ใช้ axios instance ที่แนบ token อัตโนมัติ
+import api from '../api/axios';
 
 export default function Profile() {
   const nav = useNavigate();
@@ -10,13 +11,23 @@ export default function Profile() {
     email: '',
     university: '',
     address: '',
-    password: ''
+    password: '' // ใส่เฉพาะตอนต้องการเปลี่ยน
   });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
-  const [loading, setLoading] = useState(true);    
-  const [saving, setSaving] = useState(false);      
-  const [error, setError] = useState('');           
-  
+  // ชื่อย่อสำหรับ avatar
+  const initials = useMemo(() => {
+    const src = form.name?.trim() || form.email?.trim() || '?';
+    return src
+      .split(/\s+/)
+      .map(w => w[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase();
+  }, [form.name, form.email]);
+
   useEffect(() => {
     (async () => {
       setError('');
@@ -31,9 +42,7 @@ export default function Profile() {
           password: ''
         });
       } catch (err) {
-        const status = err.response?.status;
-        if (status === 401) {
-          
+        if (err.response?.status === 401) {
           nav('/login');
         } else {
           setError(err.response?.data?.message || 'Failed to fetch profile.');
@@ -57,10 +66,10 @@ export default function Profile() {
         university: form.university,
         address: form.address
       };
-      if (form.password) payload.password = form.password; 
-      await api.put('/api/auth/profile', payload);          
+      if (form.password) payload.password = form.password; // ส่งเมื่อมีการเปลี่ยน
+      await api.put('/api/auth/profile', payload);
       alert('Profile updated successfully!');
-      setForm((f) => ({ ...f, password: '' }));            
+      setForm((f) => ({ ...f, password: '' }));
     } catch (err) {
       const msg = err.response?.data?.message || err.message || 'Failed to update profile.';
       setError(msg);
@@ -71,83 +80,134 @@ export default function Profile() {
   };
 
   const logout = () => {
-    
     localStorage.removeItem('token');
     nav('/login');
   };
 
-  if (loading) return <p style={{ padding: 16 }}>Loading profile...</p>;
+  if (loading) {
+    return (
+      <div className="container-page" style={{ maxWidth: 760 }}>
+        <div className="card">
+          <div className="card-body">
+            <p className="helper">Loading profile...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ padding: 16, maxWidth: 480 }}>
-      <h2>Profile</h2>
+    <div className="container-page" style={{ maxWidth: 760 }}>
+      {/* Header card */}
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card-body" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div
+            style={{
+              width: 64, height: 64, borderRadius: 16,
+              background: '#eef2ff', color: '#3730a3',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontWeight: 800, fontSize: 20
+            }}
+          >
+            {initials}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 20, fontWeight: 800 }}>{form.name || '—'}</div>
+            <div className="helper">{form.email || '—'}</div>
+          </div>
+          <div className="form-actions">
+            <button type="button" className="btn btn-secondary" onClick={logout}>Log out</button>
+          </div>
+        </div>
+      </div>
 
+      {/* Error panel */}
       {error && (
-        <div style={{ background: '#ffe9e9', color: '#a40000', padding: 8, margin: '8px 0', borderRadius: 6 }}>
-          {error}
+        <div
+          className="card"
+          style={{ marginBottom: 16, borderColor: '#fecaca', background: '#fff1f2' }}
+        >
+          <div className="card-body" style={{ color: '#991b1b' }}>
+            {error}
+          </div>
         </div>
       )}
 
-      <form onSubmit={onSubmit} style={{ display: 'grid', gap: 10 }}>
-        <label>
-          <div>Name</div>
-          <input
-            value={form.name}
-            onChange={onChange('name')}
-            required
-            disabled={saving}
-          />
-        </label>
+      {/* Edit form */}
+      <div className="card">
+        <div className="card-header">Profile details</div>
+        <div className="card-body">
+          <form className="form-grid" onSubmit={onSubmit}>
+            <div>
+              <label>Name</label>
+              <input
+                className="input"
+                value={form.name}
+                onChange={onChange('name')}
+                required
+                disabled={saving}
+                placeholder="Your name"
+              />
+            </div>
 
-        <label>
-          <div>Email</div>
-          <input
-            type="email"
-            value={form.email}
-            onChange={onChange('email')}
-            required
-            disabled={saving}
-          />
-        </label>
+            <div>
+              <label>Email</label>
+              <input
+                className="input"
+                type="email"
+                value={form.email}
+                onChange={onChange('email')}
+                required
+                disabled={saving}
+                placeholder="you@example.com"
+              />
+            </div>
 
-        <label>
-          <div>University (optional)</div>
-          <input
-            value={form.university}
-            onChange={onChange('university')}
-            disabled={saving}
-          />
-        </label>
+            <div>
+              <label>University (optional)</label>
+              <input
+                className="input"
+                value={form.university}
+                onChange={onChange('university')}
+                disabled={saving}
+                placeholder="e.g., QUT"
+              />
+            </div>
 
-        <label>
-          <div>Address (optional)</div>
-          <input
-            value={form.address}
-            onChange={onChange('address')}
-            disabled={saving}
-          />
-        </label>
+            <div>
+              <label>Address (optional)</label>
+              <input
+                className="input"
+                value={form.address}
+                onChange={onChange('address')}
+                disabled={saving}
+                placeholder="Street, City"
+              />
+            </div>
 
-        <label>
-          <div>New password (optional)</div>
-          <input
-            type="password"
-            value={form.password}
-            onChange={onChange('password')}
-            placeholder="Leave blank to keep existing"
-            disabled={saving}
-          />
-        </label>
+            <div className="sm:col-span-2">
+              <label>New password (optional)</label>
+              <input
+                className="input"
+                type="password"
+                value={form.password}
+                onChange={onChange('password')}
+                disabled={saving}
+                placeholder="Leave blank to keep existing"
+              />
+            </div>
 
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button type="submit" disabled={saving}>
-            {saving ? 'Saving...' : 'Save changes'}
-          </button>
-          <button type="button" onClick={logout} disabled={saving}>
-            Log out
-          </button>
+            <div className="form-actions sm:col-span-2">
+              <button type="submit" className="btn btn-primary" disabled={saving}>
+                {saving ? 'Saving…' : 'Save changes'}
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={() => setForm({ ...form, password: '' })} disabled={saving}>
+                Clear password
+              </button>
+            </div>
+          </form>
         </div>
-      </form>
+      </div>
     </div>
   );
 }
