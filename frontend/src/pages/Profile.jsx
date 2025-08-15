@@ -1,4 +1,3 @@
-// frontend/src/pages/Profile.jsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios'; // <- ใช้ axios instance ที่แนบ token อัตโนมัติ
@@ -11,19 +10,18 @@ export default function Profile() {
     email: '',
     university: '',
     address: '',
-    password: '' // ใส่เฉพาะตอนต้องการเปลี่ยน
+    password: ''
   });
 
-  const [loading, setLoading] = useState(true);     // โหลดโปรไฟล์ครั้งแรก
-  const [saving, setSaving] = useState(false);      // กดบันทึก
-  const [error, setError] = useState('');           // ข้อความเออเรอร์ (ถ้ามี)
-
-  // โหลดโปรไฟล์เมื่อเข้าเพจ
+  const [loading, setLoading] = useState(true);    
+  const [saving, setSaving] = useState(false);      
+  const [error, setError] = useState('');           
+  
   useEffect(() => {
     (async () => {
       setError('');
       try {
-        const res = await api.get('/api/auth/profile'); // GET โปรไฟล์
+        const res = await api.get('/api/auth/profile');
         const data = res.data || {};
         setForm({
           name: data.name || '',
@@ -35,7 +33,7 @@ export default function Profile() {
       } catch (err) {
         const status = err.response?.status;
         if (status === 401) {
-          // ไม่มี/หมดอายุ token → กลับไปล็อกอิน
+          
           nav('/login');
         } else {
           setError(err.response?.data?.message || 'Failed to fetch profile.');
@@ -59,10 +57,10 @@ export default function Profile() {
         university: form.university,
         address: form.address
       };
-      if (form.password) payload.password = form.password; // ส่งเฉพาะถ้ามีการเปลี่ยน
-      await api.put('/api/auth/profile', payload);          // PUT อัปเดตโปรไฟล์
+      if (form.password) payload.password = form.password; 
+      await api.put('/api/auth/profile', payload);          
       alert('Profile updated successfully!');
-      setForm((f) => ({ ...f, password: '' }));            // เคลียร์ช่องรหัสผ่าน
+      setForm((f) => ({ ...f, password: '' }));            
     } catch (err) {
       const msg = err.response?.data?.message || err.message || 'Failed to update profile.';
       setError(msg);
@@ -73,7 +71,7 @@ export default function Profile() {
   };
 
   const logout = () => {
-    // ถ้าโปรเจ็กต์คุณมี AuthContext ให้เรียก logout context แทนได้
+    
     localStorage.removeItem('token');
     nav('/login');
   };

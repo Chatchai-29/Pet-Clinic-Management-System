@@ -14,57 +14,50 @@ export default function Login() {
 
   const submit = async (e) => {
     e.preventDefault();
-    setErrorMsg('');
-    setLoading(true);
+    setErrorMsg(''); setLoading(true);
     try {
       const res = await api.post('/api/auth/login', form);
       if (res.data?.token) setToken(res.data.token);
       nav('/profile');
     } catch (err) {
-      
       const status = err?.response?.status;
-      if (status === 401) {
-        setErrorMsg('Invalid email or password');
-      } else {
-        setErrorMsg(err?.response?.data?.message || 'Error during login');
-      }
+      if (status === 401) setErrorMsg('Invalid email or password');
+      else setErrorMsg(err?.response?.data?.message || 'Error during login');
       console.error('Login error:', err);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   return (
-    <div style={{ padding: 16, maxWidth: 360 }}>
-      <h2>Login</h2>
-
-      {errorMsg && (
-        <div style={{ background:'#ffe9e9', color:'#a40000', padding:8, borderRadius:6, marginBottom:8 }}>
-          {errorMsg}
+    <div className="container-page" style={{ maxWidth: 420 }}>
+      <div className="card">
+        <div className="card-header">Login</div>
+        <div className="card-body">
+          {errorMsg && (
+            <div style={{ background:'#ffe9e9', color:'#a40000', padding:10, borderRadius:10, marginBottom:10 }}>
+              {errorMsg}
+            </div>
+          )}
+          <form className="form-grid" onSubmit={submit}>
+            <div className="sm:col-span-2">
+              <label>Email</label>
+              <input className="input" type="email" value={form.email} onChange={onChange('email')} required disabled={loading} />
+            </div>
+            <div className="sm:col-span-2">
+              <label>Password</label>
+              <input className="input" type="password" value={form.password} onChange={onChange('password')} required disabled={loading} />
+            </div>
+            <div className="form-actions sm:col-span-2">
+              <button type="submit" className="btn btn-primary" disabled={loading}>
+                {loading ? 'Signing in...' : 'Sign in'}
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={()=>nav('/register')} disabled={loading}>
+                Create account
+              </button>
+            </div>
+          </form>
         </div>
-      )}
-
-      <form onSubmit={submit} style={{ display:'grid', gap:8 }}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={form.email}
-          onChange={onChange('email')}
-          required
-          disabled={loading}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={form.password}
-          onChange={onChange('password')}
-          required
-          disabled={loading}
-        />
-        <button type="submit" disabled={loading}>
-          {loading ? 'Signing in...' : 'Sign in'}
-        </button>
-      </form>
+      </div>
+      <p className="helper" style={{ marginTop: 8 }}>Use your registered email and password.</p>
     </div>
   );
 }
