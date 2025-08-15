@@ -2,28 +2,33 @@ const express = require('express');
 const router = express.Router();
 const Appointment = require('../models/appointmentModel');
 
+/**
+ * Helper: Check if there is a conflicting appointment (same pet/date/time with status 'scheduled')
+ */
 async function findConflict({ petId, date, time, excludeId }) {
   const query = { petId, date, time, status: 'scheduled' };
   if (excludeId) query._id = { $ne: excludeId };
   return Appointment.exists(query);
 }
 
+/**
+ * PATCH /appointments/:id
+ */
 router.patch('/:id', async (req, res) => {
   try {
     const current = await Appointment.findById(req.params.id);
     if (!current) return res.status(404).json({ message: 'Appointment not found' });
 
-    // ค่าที่จะใช้ตรวจซ้ำ: ถ้า body ไม่ส่งมาก็ใช้ค่าปัจจุบัน
     const nextPetId = req.body.petId ?? String(current.petId);
-    const nextDate  = req.body.date  ?? current.date;
-    const nextTime  = req.body.time  ?? current.time;
+    const nextDate = req.body.date ?? current.date;
+    const nextTime = req.body.time ?? current.time;
     const nextStatus = req.body.status ?? current.status;
 
     if (nextStatus === 'scheduled') {
       const conflict = await findConflict({
         petId: nextPetId,
-        date:  nextDate,
-        time:  nextTime,
+        date: nextDate,
+        time: nextTime,
         excludeId: current._id
       });
       if (conflict) {
@@ -46,6 +51,9 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
+/**
+ * PATCH /appointments/:id/cancel
+ */
 router.patch('/:id/cancel', async (req, res) => {
   try {
     const updated = await Appointment.findByIdAndUpdate(
@@ -62,7 +70,9 @@ router.patch('/:id/cancel', async (req, res) => {
   }
 });
 
-// GET /appointments  (รองรับ filter)
+/**
+ * GET /appointments
+ */
 router.get('/', async (req, res) => {
   try {
     const { ownerId, petId, status, date } = req.query;
@@ -83,7 +93,67 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /appointments/:id
+/**
+ * GET /appointments/summary
+ * Returns summary of appointments grouped by date & status.
+ * Default range: today to next 6 days if not provided.
+ * Always returns all days in the range (with 0 values if no appointments)
+ */
+router.get('/summary', async (req, res) => {
+  try {
+    let { from, to } = req.query;
+
+    // Default: today to next 6 days
+    if (!from || !to) {
+      const today = new Date();
+      const toDate = new Date();
+      toDate.setDate(today.getDate() + 6);
+
+      from = today.toISOString().slice(0, 10);
+      to = toDate.toISOString().slice(0, 10);
+    }
+
+    const filter = { date: { $gte: from, $lte: to } };
+
+    const summary = await Appointment.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: { date: "$date", status: "$status" },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Map results into a lookup object
+    const map = {};
+    summary.forEach(item => {
+      const date = item._id.date;
+      if (!map[date]) {
+        map[date] = { date, total: 0, scheduled: 0, completed: 0, cancelled: 0 };
+      }
+      map[date].total += item.count;
+      map[date][item._id.status] = item.count;
+    });
+
+    // Fill missing days with 0s
+    const result = [];
+    const start = new Date(from);
+    const end = new Date(to);
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toISOString().slice(0, 10);
+      result.push(map[dateStr] || { date: dateStr, total: 0, scheduled: 0, completed: 0, cancelled: 0 });
+    }
+
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/**
+ * GET /appointments/:id
+ */
 router.get('/:id', async (req, res) => {
   try {
     const item = await Appointment.findById(req.params.id)
@@ -96,7 +166,9 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST /appointments
+/**
+ * POST /appointments
+ */
 router.post('/', async (req, res) => {
   try {
     const { petId, ownerId, date, time, reason } = req.body;
@@ -104,7 +176,6 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'petId, ownerId, date, time are required' });
     }
 
-    //(petId + date + time + status=scheduled)
     const conflict = await findConflict({ petId, date, time });
     if (conflict) {
       return res.status(409).json({
@@ -125,7 +196,9 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT /appointments/:id
+/**
+ * PUT /appointments/:id
+ */
 router.put('/:id', async (req, res) => {
   try {
     const body = req.body || {};
@@ -167,7 +240,9 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /appointments/:id
+/**
+ * DELETE /appointments/:id
+ */
 router.delete('/:id', async (req, res) => {
   try {
     const deleted = await Appointment.findByIdAndDelete(req.params.id);

@@ -1,14 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { format, addDays } from 'date-fns';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const toStr = new Date(Date.now() + 6 * 86400000).toISOString().slice(0, 10);
+  // Default date range: today to next 7 days
+  const today = new Date();
+  const todayStr = format(today, 'yyyy-MM-dd');
+  const toDate = addDays(today, 6);
+  const toStr = format(toDate, 'yyyy-MM-dd');
 
   useEffect(() => {
     (async () => {
@@ -23,7 +27,7 @@ export default function Dashboard() {
         setLoading(false);
       }
     })();
-  }, []); // run once
+  }, [todayStr, toStr]);
 
   const todayCount = useMemo(
     () => rows.find(r => r.date === todayStr)?.total || 0,
@@ -63,7 +67,9 @@ export default function Dashboard() {
         </div>
         <div className="bg-white rounded-xl shadow p-5 border border-slate-200">
           <h2 className="text-sm font-medium text-slate-500">Period</h2>
-          <p className="mt-2 text-lg font-semibold">{todayStr} → {toStr}</p>
+          <p className="mt-2 text-lg font-semibold">
+            {format(today, 'dd/MM/yyyy')} → {format(toDate, 'dd/MM/yyyy')}
+          </p>
         </div>
       </div>
 
@@ -90,7 +96,7 @@ export default function Dashboard() {
                 <tbody>
                   {rows.map(r => (
                     <tr key={r.date} className="border-t border-slate-200">
-                      <td className="px-4 py-2">{r.date}</td>
+                      <td className="px-4 py-2">{format(new Date(r.date), 'dd/MM/yyyy')}</td>
                       <td className="px-4 py-2">{r.total}</td>
                       <td className="px-4 py-2">{r.scheduled || 0}</td>
                       <td className="px-4 py-2">{r.completed || 0}</td>

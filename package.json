@@ -16,3 +16,5 @@
   "author": "Task Manager Team",
   "license": "ISC"
 }
+"proxy": "http://localhost:5001"
+
