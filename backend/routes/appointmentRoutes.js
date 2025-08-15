@@ -1,7 +1,12 @@
-// backend/routes/appointmentRoutes.js
 const express = require('express');
 const router = express.Router();
 const Appointment = require('../models/appointmentModel');
+
+async function findConflict({ petId, date, time, excludeId }) {
+  const query = { petId, date, time, status: 'scheduled' };
+  if (excludeId) query._id = { $ne: excludeId };
+  return Appointment.exists(query);
+}
 
 // GET /appointments  (รองรับ filter)
 router.get('/', async (req, res) => {
@@ -11,7 +16,7 @@ router.get('/', async (req, res) => {
     if (ownerId) filter.ownerId = ownerId;
     if (petId) filter.petId = petId;
     if (status) filter.status = status;
-    if (date) filter.date = date; // 'YYYY-MM-DD'
+    if (date) filter.date = date;
 
     const items = await Appointment.find(filter)
       .sort({ date: 1, time: 1 })
@@ -45,38 +50,70 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'petId, ownerId, date, time are required' });
     }
 
-    const appt = new Appointment({
-      petId,
-      ownerId,
-      date,   // e.g. '2025-08-16'
-      time,   // e.g. '10:30'
-      reason, // optional
-      // status default = 'scheduled' (ใน model)
-    });
+    //(petId + date + time + status=scheduled)
+    const conflict = await findConflict({ petId, date, time });
+    if (conflict) {
+      return res.status(409).json({
+        message: 'Double booking detected: this pet already has an appointment at the same date/time.'
+      });
+    }
 
+    const appt = new Appointment({ petId, ownerId, date, time, reason });
     const saved = await appt.save();
     res.status(201).json(saved);
   } catch (err) {
+    if (err && err.code === 11000) {
+      return res.status(409).json({
+        message: 'Double booking detected by database constraint (pet, date, time).'
+      });
+    }
     res.status(400).json({ message: err.message });
   }
 });
 
-// PUT /appointments/:id  (อัปเดตทั่วไป)
+// PUT /appointments/:id
 router.put('/:id', async (req, res) => {
   try {
+    const body = req.body || {};
+    const current = await Appointment.findById(req.params.id);
+    if (!current) return res.status(404).json({ message: 'Appointment not found' });
+
+    const petId = body.petId || String(current.petId);
+    const date = body.date || current.date;
+    const time = body.time || current.time;
+    const status = body.status || current.status;
+
+    if (status === 'scheduled') {
+      const conflict = await findConflict({
+        petId,
+        date,
+        time,
+        excludeId: req.params.id
+      });
+      if (conflict) {
+        return res.status(409).json({
+          message: 'Double booking detected: this pet already has an appointment at the same date/time.'
+        });
+      }
+    }
+
     const updated = await Appointment.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      body,
       { new: true }
     );
-    if (!updated) return res.status(404).json({ message: 'Appointment not found' });
     res.json(updated);
   } catch (err) {
+    if (err && err.code === 11000) {
+      return res.status(409).json({
+        message: 'Double booking detected by database constraint (pet, date, time).'
+      });
+    }
     res.status(400).json({ message: err.message });
   }
 });
 
-// DELETE /appointments/:id  (ลบจริง; TASK-23 จะเพิ่ม cancel แบบเปลี่ยนสถานะ)
+// DELETE /appointments/:id
 router.delete('/:id', async (req, res) => {
   try {
     const deleted = await Appointment.findByIdAndDelete(req.params.id);
