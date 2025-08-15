@@ -13,8 +13,7 @@
     "mocha": "^11.7.1",
     "sinon": "^21.0.0"
   },
+  "proxy": "http://localhost:5001",
   "author": "Task Manager Team",
   "license": "ISC"
 }
-"proxy": "http://localhost:5001"
-
