@@ -1,4 +1,4 @@
-// server.js
+// backend/server.js
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
@@ -9,11 +9,34 @@ dotenv.config();
 
 const app = express();
 
-// --- Global middleware (keep existing) ---
-app.use(cors());
+/* -----------------------------
+   CORS & body parser (MUST come before any routes)
+-------------------------------- */
+const ALLOWED_ORIGINS = [
+  'http://localhost:3000',
+  'http://192.168.0.134:3000', // add your LAN IP if you open from another device
+];
+
+const corsOptions = {
+  origin: function (origin, cb) {
+    // Allow curl/Postman or same-origin (no Origin header)
+    if (!origin) return cb(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    // Block unknown origins in dev (returning false means CORS will fail)
+    return cb(null, false);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 
-// --- Helper: safely require optional route modules ---
+/* -----------------------------
+   Lazy route loader
+-------------------------------- */
 function tryRequire(modulePath) {
   try {
     return require(modulePath);
@@ -26,51 +49,61 @@ function tryRequire(modulePath) {
   }
 }
 
-// --- Mount business routes (keep your originals) ---
+/* -----------------------------
+   Routes
+-------------------------------- */
+const historyRoutes = require('./routes/historyRoutes');
+
 const appointmentRoutes = tryRequire('./routes/appointmentRoutes');
+const ownerRoutes = tryRequire('./routes/ownerRoutes');
+const petRoutes = tryRequire('./routes/petRoutes');
+const authRoutes = tryRequire('./routes/authRoutes');
+const taskRoutes = tryRequire('./routes/taskRoutes');
+
+// History routes (both paths to avoid FE mismatch)
+app.use('/history', historyRoutes);
+app.use('/api/history', historyRoutes);
+
 if (appointmentRoutes) {
   app.use('/appointments', appointmentRoutes);
   console.log('[route] /appointments mounted');
 }
 
-const ownerRoutes = tryRequire('./routes/ownerRoutes');
 if (ownerRoutes) {
   app.use('/owners', ownerRoutes);
   console.log('[route] /owners mounted');
 }
 
-const petRoutes = tryRequire('./routes/petRoutes');
 if (petRoutes) {
   app.use('/pets', petRoutes);
   console.log('[route] /pets mounted');
 }
 
-const authRoutes = tryRequire('./routes/authRoutes');
 if (authRoutes) {
-  app.use('/api/auth', authRoutes);
   app.use('/auth', authRoutes);
+  app.use('/api/auth', authRoutes);
   console.log('[route] /api/auth & /auth mounted');
 }
 
-const taskRoutes = tryRequire('./routes/taskRoutes');
 if (taskRoutes) {
-  app.use('/api/tasks', taskRoutes);
   app.use('/tasks', taskRoutes);
+  app.use('/api/tasks', taskRoutes);
   console.log('[route] /api/tasks & /tasks mounted');
 }
 
-// --- Health check ---
+// Health check
 app.get('/', (_req, res) => {
   res.send('API is running');
 });
 
-// --- DB connect + server start ---
+/* -----------------------------
+   Start server
+-------------------------------- */
 const PORT = process.env.PORT || 5001;
 const isTest = process.env.NODE_ENV === 'test';
 
 async function start() {
   try {
-    // Skip DB connection entirely when running tests (CI)
     if (!isTest) {
       await connectDB();
       console.log('MongoDB connected successfully');

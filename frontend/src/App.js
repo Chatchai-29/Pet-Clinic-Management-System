@@ -9,6 +9,7 @@ import OwnerPage from './pages/OwnerPage';
 import AppointmentPage from './pages/AppointmentPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Dashboard from './pages/Dashboard';
+import HistoryPage from './pages/HistoryPage';
 
 function App() {
   return (
@@ -21,8 +22,18 @@ function App() {
         <Route path="/pets" element={<PetPage />} />
         <Route path="/owners" element={<OwnerPage />} />
         <Route path="/appointments" element={<AppointmentPage />} />
-        
-        {/* ใส่ ProtectedRoute ให้ Dashboard */}
+
+        {/* Protect History */}
+        <Route
+          path="/history"
+          element={
+            <ProtectedRoute>
+              <HistoryPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Protect Dashboard */}
         <Route
           path="/dashboard"
           element={
@@ -32,6 +43,7 @@ function App() {
           }
         />
 
+        {/* Protect Profile */}
         <Route
           path="/profile"
           element={

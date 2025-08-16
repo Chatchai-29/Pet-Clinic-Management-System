@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Appointment = require('../models/appointmentModel');
+const Appointment = require('../models/AppointmentModel');
 
 /**
  * Helper: Check if there is a conflicting appointment (same pet/date/time with status 'scheduled')
