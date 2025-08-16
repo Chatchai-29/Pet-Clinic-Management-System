@@ -85,6 +85,14 @@ export default function AppointmentPage() {
 
   const clearForm = () => { setEditingId(null); setFormData({ ownerId:'', petId:'', date:'', time:'', reason:'' }); setErrors([]); };
 
+  // Format YYYY-MM-DD to DD/MM/YYYY for display only
+  const formatDMY = (isoDate) => {
+    if (!isoDate || typeof isoDate !== 'string') return isoDate || '';
+    const [y, m, d] = isoDate.split('-');
+    if (!y || !m || !d) return isoDate;
+    return `${d}/${m}/${y}`;
+  };
+
   return (
     <div className="container-page">
       <div className="mb-6">
@@ -160,7 +168,7 @@ export default function AppointmentPage() {
               <tr><td colSpan="7" className="text-center py-6 text-slate-500">No appointments</td></tr>
             ) : appointments.map(appt => (
               <tr key={appt._id}>
-                <td>{appt.date}</td>
+                <td>{formatDMY(appt.date)}</td>
                 <td>{appt.time}</td>
                 <td>{appt.petId?.name || '—'}</td>
                 <td>{appt.ownerId?.name || '—'}</td>
