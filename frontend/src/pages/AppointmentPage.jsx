@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import axios from 'axios';
 
 const API_APPTS  = 'http://localhost:5001/appointments';
@@ -9,17 +9,68 @@ export default function AppointmentPage() {
   const [appointments, setAppointments] = useState([]);
   const [owners, setOwners] = useState([]);
   const [pets, setPets] = useState([]);
+
+  // API value keeps ISO (yyyy-mm-dd). UI shows dd/mm/yyyy via displayDate.
   const [formData, setFormData] = useState({ ownerId:'', petId:'', date:'', time:'', reason:'' });
+  const [displayDate, setDisplayDate] = useState(''); // dd/mm/yyyy
+  const nativeDateRef = useRef(null); // hidden native date input for calendar
+
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState([]);
 
   useEffect(() => { fetchAll(); }, []);
   const fetchAll = async () => {
     try {
-      const [o, p, a] = await Promise.all([axios.get(API_OWNERS), axios.get(API_PETS), axios.get(API_APPTS)]);
-      setOwners(o.data||[]); setPets(p.data||[]); setAppointments(a.data||[]);
-    } catch (e) { alert('Error fetching data'); console.error(e); }
+      const [o, p, a] = await Promise.all([
+        axios.get(API_OWNERS),
+        axios.get(API_PETS),
+        axios.get(API_APPTS),
+      ]);
+      setOwners(o.data || []);
+      setPets(p.data || []);
+      setAppointments(a.data || []);
+    } catch (e) {
+      console.error(e);
+      alert('Error fetching data');
+    }
   };
+
+  // ---------- date helpers (display <-> ISO) ----------
+  // Convert ISO yyyy-mm-dd to dd/mm/yyyy (for display)
+  const isoToDmy = (iso) => {
+    if (!iso || typeof iso !== 'string') return '';
+    const [y, m, d] = iso.split('-');
+    if (!y || !m || !d) return '';
+    return `${d}/${m}/${y}`;
+  };
+
+  // Convert dd/mm/yyyy to ISO yyyy-mm-dd. Return null if invalid.
+  const dmyToIso = (dmy) => {
+    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec((dmy || '').trim());
+    if (!m) return null;
+    const dd = parseInt(m[1], 10);
+    const mm = parseInt(m[2], 10);
+    const yyyy = parseInt(m[3], 10);
+    const dt = new Date(yyyy, mm - 1, dd);
+    // Validate real calendar date
+    if (dt.getFullYear() !== yyyy || dt.getMonth() !== mm - 1 || dt.getDate() !== dd) return null;
+    const mmStr = String(mm).padStart(2, '0');
+    const ddStr = String(dd).padStart(2, '0');
+    return `${yyyy}-${mmStr}-${ddStr}`;
+  };
+
+  // (EN) Format while typing: keep only digits and insert slashes as dd/mm/yyyy
+  const formatDmyMask = (val) => {
+    const digits = (val || '').replace(/\D/g, '').slice(0, 8);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+    return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+  };
+
+  // Keep displayDate in sync when formData.date changes (e.g., when editing)
+  useEffect(() => {
+    setDisplayDate(isoToDmy(formData.date));
+  }, [formData.date]);
 
   const filteredPets = useMemo(() => {
     if (!formData.ownerId) return [];
@@ -30,13 +81,25 @@ export default function AppointmentPage() {
     const errs = [];
     if (!formData.ownerId) errs.push('Owner is required.');
     if (!formData.petId)   errs.push('Pet is required.');
-    if (!formData.date)    errs.push('Date is required.');
-    if (!formData.time)    errs.push('Time is required.');
+
+    // Ensure typed dd/mm/yyyy is parsed into ISO before submit
+    const isoFromDisplay = dmyToIso(displayDate);
+    if (!isoFromDisplay) errs.push('Date is required in dd/mm/yyyy.');
+    if (isoFromDisplay && !formData.date) {
+      formData.date = isoFromDisplay; // safe set before state commit
+    }
+
+    if (!formData.time) errs.push('Time is required.');
+
     const pet = pets.find(p => String(p._id) === String(formData.petId));
     const ownerOfPet = pet?.ownerId?._id || pet?.ownerId;
-    if (pet && String(ownerOfPet) !== String(formData.ownerId)) errs.push('Selected pet does not belong to the owner.');
+    if (pet && String(ownerOfPet) !== String(formData.ownerId)) {
+      errs.push('Selected pet does not belong to the owner.');
+    }
+
     const dt = formData.date && formData.time ? new Date(`${formData.date}T${formData.time}:00`) : null;
     if (dt && dt < new Date()) errs.push('Appointment cannot be in the past.');
+
     setErrors(errs);
     return errs.length === 0;
   };
@@ -50,15 +113,17 @@ export default function AppointmentPage() {
       } else {
         await axios.post(API_APPTS, formData);
       }
-      clearForm(); await refetchAppointments();
+      clearForm();
+      await refetchAppointments();
     } catch (err) {
-      alert(err.response?.data?.message || 'Save failed'); console.error(err);
+      console.error(err);
+      alert(err.response?.data?.message || 'Save failed');
     }
   };
 
   const refetchAppointments = async () => {
     const a = await axios.get(API_APPTS);
-    setAppointments(a.data||[]);
+    setAppointments(a.data || []);
   };
 
   const handleEdit = (appt) => {
@@ -66,32 +131,42 @@ export default function AppointmentPage() {
     setFormData({
       ownerId: appt.ownerId?._id || appt.ownerId,
       petId: appt.petId?._id || appt.petId,
-      date: appt.date, time: appt.time, reason: appt.reason || ''
+      date: appt.date,    // ISO from server
+      time: appt.time,
+      reason: appt.reason || '',
     });
     setErrors([]);
   };
 
   const handleCancel = async (id) => {
     if (!window.confirm('Cancel this appointment?')) return;
-    try { await axios.patch(`${API_APPTS}/${id}/cancel`); await refetchAppointments(); }
-    catch (e) { alert('Cancel failed'); }
+    try {
+      await axios.patch(`${API_APPTS}/${id}/cancel`);
+      await refetchAppointments();
+    } catch {
+      alert('Cancel failed');
+    }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete permanently?')) return;
-    try { await axios.delete(`${API_APPTS}/${id}`); await refetchAppointments(); }
-    catch (e) { alert('Delete failed'); }
+    try {
+      await axios.delete(`${API_APPTS}/${id}`);
+      await refetchAppointments();
+    } catch {
+      alert('Delete failed');
+    }
   };
 
-  const clearForm = () => { setEditingId(null); setFormData({ ownerId:'', petId:'', date:'', time:'', reason:'' }); setErrors([]); };
-
-  // Format YYYY-MM-DD to DD/MM/YYYY for display only
-  const formatDMY = (isoDate) => {
-    if (!isoDate || typeof isoDate !== 'string') return isoDate || '';
-    const [y, m, d] = isoDate.split('-');
-    if (!y || !m || !d) return isoDate;
-    return `${d}/${m}/${y}`;
+  const clearForm = () => {
+    setEditingId(null);
+    setFormData({ ownerId:'', petId:'', date:'', time:'', reason:'' });
+    setDisplayDate('');
+    setErrors([]);
   };
+
+  // Table shows dd/mm/yyyy but API stores ISO
+  const formatDMY = (isoDate) => isoToDmy(isoDate) || (isoDate || '');
 
   return (
     <div className="container-page">
@@ -104,7 +179,7 @@ export default function AppointmentPage() {
         <div className="card mb-4">
           <div className="card-body">
             <ul className="list-disc ml-5 text-rose-700">
-              {errors.map((er,i)=><li key={i}>{er}</li>)}
+              {errors.map((er, i) => <li key={i}>{er}</li>)}
             </ul>
           </div>
         </div>
@@ -113,49 +188,137 @@ export default function AppointmentPage() {
       <div className="card mb-6">
         <div className="card-body">
           <div className="card-title">{editingId ? 'Edit appointment' : 'New appointment'}</div>
+
           <form onSubmit={handleSubmit} className="form-grid">
+            {/* Owner */}
             <div>
               <label className="text-sm text-slate-600">Owner</label>
-              <select className="select mt-1" value={formData.ownerId}
-                      onChange={e=>setFormData({...formData, ownerId:e.target.value, petId:''})}>
+              <select
+                className="select mt-1"
+                value={formData.ownerId}
+                onChange={(e) => setFormData({ ...formData, ownerId: e.target.value, petId: '' })}
+              >
                 <option value="">Select owner</option>
-                {owners.map(o=> <option key={o._id} value={o._id}>{o.name}</option>)}
+                {owners.map((o) => <option key={o._id} value={o._id}>{o.name}</option>)}
               </select>
             </div>
+
+            {/* Pet */}
             <div>
               <label className="text-sm text-slate-600">Pet</label>
-              <select className="select mt-1" value={formData.petId}
-                      onChange={e=>setFormData({...formData, petId:e.target.value})}
-                      disabled={!formData.ownerId}>
+              <select
+                className="select mt-1"
+                value={formData.petId}
+                onChange={(e) => setFormData({ ...formData, petId: e.target.value })}
+                disabled={!formData.ownerId}
+              >
                 <option value="">{formData.ownerId ? 'Select pet' : 'Select owner first'}</option>
-                {filteredPets.map(p=> <option key={p._id} value={p._id}>{p.name} ({p.type})</option>)}
+                {filteredPets.map((p) => <option key={p._id} value={p._id}>{p.name} ({p.type})</option>)}
               </select>
             </div>
+
+            {/* Date (text dd/mm/yyyy + calendar button that opens hidden native date picker) */}
             <div>
               <label className="text-sm text-slate-600">Date</label>
-              <input className="input mt-1" type="date" value={formData.date}
-                     onChange={e=>setFormData({...formData, date:e.target.value})}/>
+              <div className="relative mt-1">
+                {/* Visible text input (dd/mm/yyyy) with auto slash insertion */}
+                <input
+                  className="input w-full pr-10"
+                  type="text"
+                  placeholder="dd/mm/yyyy"
+                  value={displayDate}
+                  onChange={(e) => {
+                    const masked = formatDmyMask(e.target.value);
+                    setDisplayDate(masked);
+                    // Optionally keep formData.date in sync while typing (when 8 digits typed)
+                    const iso = dmyToIso(masked);
+                    setFormData(prev => ({ ...prev, date: iso || '' }));
+                  }}
+                  onBlur={() => {
+                    const iso = dmyToIso(displayDate);
+                    if (iso) setFormData({ ...formData, date: iso });
+                    else setFormData({ ...formData, date: '' });
+                  }}
+                />
+
+                {/* Calendar button */}
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500"
+                  aria-label="Open calendar"
+                  onClick={() => {
+                    const el = nativeDateRef.current;
+                    if (!el) return;
+                    if (el.showPicker) el.showPicker(); // Chrome/Edge
+                    else el.click();                     // Fallback
+                  }}
+                >
+                  📅
+                </button>
+
+                {/* Hidden native date input (keeps ISO, drives the calendar UI) */}
+                <input
+                  ref={nativeDateRef}
+                  type="date"
+                  style={{
+                    position: 'absolute',
+                    width: 1, height: 1, padding: 0, margin: -1,
+                    overflow: 'hidden', clip: 'rect(0,0,0,0)',
+                    whiteSpace: 'nowrap', border: 0
+                  }}
+                  onChange={(e) => {
+                    const iso = e.target.value; // yyyy-mm-dd from native picker
+                    setFormData((prev) => ({ ...prev, date: iso }));
+                    // reflect to display as dd/mm/yyyy
+                    if (iso) {
+                      const [y, m, d] = iso.split('-');
+                      setDisplayDate(`${d}/${m}/${y}`);
+                    } else {
+                      setDisplayDate('');
+                    }
+                  }}
+                />
+              </div>
             </div>
+
+            {/* Time */}
             <div>
               <label className="text-sm text-slate-600">Time</label>
-              <input className="input mt-1" type="time" value={formData.time}
-                     onChange={e=>setFormData({...formData, time:e.target.value})}/>
+              <input
+                className="input mt-1"
+                type="time"
+                value={formData.time}
+                onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+              />
             </div>
+
+            {/* Reason */}
             <div className="sm:col-span-2">
               <label className="text-sm text-slate-600">Reason</label>
-              <input className="input mt-1" placeholder="(optional)" value={formData.reason}
-                     onChange={e=>setFormData({...formData, reason:e.target.value})}/>
+              <input
+                className="input mt-1"
+                placeholder="(optional)"
+                value={formData.reason}
+                onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+              />
             </div>
+
+            {/* Actions */}
             <div className="form-actions sm:col-span-2">
               <button type="submit" className="btn btn-primary">
                 {editingId ? 'Update' : 'Book'} appointment
               </button>
-              {editingId && <button type="button" onClick={clearForm} className="btn btn-secondary">Cancel edit</button>}
+              {editingId && (
+                <button type="button" onClick={clearForm} className="btn btn-secondary">
+                  Cancel edit
+                </button>
+              )}
             </div>
           </form>
         </div>
       </div>
 
+      {/* Table – unchanged, just formats ISO to dd/mm/yyyy for display */}
       <div className="table-wrap">
         <table className="table">
           <thead>
@@ -181,11 +344,11 @@ export default function AppointmentPage() {
                 </td>
                 <td>
                   <div className="flex flex-wrap gap-2">
-                    <button className="btn btn-ghost" onClick={()=>handleEdit(appt)}>Edit</button>
+                    <button className="btn btn-ghost" onClick={() => handleEdit(appt)}>Edit</button>
                     {appt.status === 'scheduled' && (
-                      <button className="btn btn-secondary" onClick={()=>handleCancel(appt._id)}>Cancel</button>
+                      <button className="btn btn-secondary" onClick={() => handleCancel(appt._id)}>Cancel</button>
                     )}
-                    <button className="btn btn-danger" onClick={()=>handleDelete(appt._id)}>Delete</button>
+                    <button className="btn btn-danger" onClick={() => handleDelete(appt._id)}>Delete</button>
                   </div>
                 </td>
               </tr>

@@ -15,5 +15,8 @@
   },
   "proxy": "http://localhost:5001",
   "author": "Task Manager Team",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "react-datepicker": "^8.5.0"
+  }
 }
