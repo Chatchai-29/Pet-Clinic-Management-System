@@ -16,16 +16,13 @@ app.use(express.json());
 // --- Helper: safely require optional route modules ---
 function tryRequire(modulePath) {
   try {
-    // Attempt to require the module; return null if not found
-    // so server won't crash when a route file is missing.
-    // This lets you add routes gradually without breaking the app.
     return require(modulePath);
   } catch (err) {
     if (err && err.code === 'MODULE_NOT_FOUND') {
       console.warn(`[warn] Route module not found: ${modulePath} (skipped)`);
       return null;
     }
-    throw err; // other errors should surface
+    throw err;
   }
 }
 
@@ -50,48 +47,47 @@ if (petRoutes) {
 
 const authRoutes = tryRequire('./routes/authRoutes');
 if (authRoutes) {
-  // Mount on your existing prefix; mounting both helps old clients/tests
   app.use('/api/auth', authRoutes);
   app.use('/auth', authRoutes);
   console.log('[route] /api/auth & /auth mounted');
 }
 
-// --- NEW: Task routes for teacher's tests (non-breaking) ---
 const taskRoutes = tryRequire('./routes/taskRoutes');
 if (taskRoutes) {
-  // Mount both to cover different test expectations
   app.use('/api/tasks', taskRoutes);
   app.use('/tasks', taskRoutes);
   console.log('[route] /api/tasks & /tasks mounted');
 }
 
-// --- Health check (optional, harmless) ---
+// --- Health check ---
 app.get('/', (_req, res) => {
   res.send('API is running');
 });
 
-// --- DB connect + server start (keep behavior) ---
+// --- DB connect + server start ---
 const PORT = process.env.PORT || 5001;
+const isTest = process.env.NODE_ENV === 'test';
 
 async function start() {
   try {
-    await connectDB();
-    console.log('MongoDB connected successfully');
+    // Skip DB connection entirely when running tests (CI)
+    if (!isTest) {
+      await connectDB();
+      console.log('MongoDB connected successfully');
+    } else {
+      console.log('Test mode: skip DB connection & listening');
+    }
 
-    if (process.env.NODE_ENV !== 'test') {
+    if (!isTest) {
       app.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);
       });
-    } else {
-      console.log('Test mode: server not listening');
     }
 
-    // Mongoose connection error logging
     mongoose.connection.on('error', (err) => {
       console.error('MongoDB connection error:', err);
     });
 
-    // Graceful shutdown
     process.on('SIGINT', () => {
       mongoose.connection.close(() => {
         console.log('MongoDB connection closed');
@@ -104,8 +100,6 @@ async function start() {
   }
 }
 
-// Start immediately in normal runs (unchanged behavior)
 start();
 
-// Export the app object for tests (non-breaking for normal runs)
 module.exports = app;
