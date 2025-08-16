@@ -19,10 +19,10 @@ router.patch('/:id', async (req, res) => {
     const current = await Appointment.findById(req.params.id);
     if (!current) return res.status(404).json({ message: 'Appointment not found' });
 
-    const nextPetId = req.body.petId ?? String(current.petId);
-    const nextDate = req.body.date ?? current.date;
-    const nextTime = req.body.time ?? current.time;
-    const nextStatus = req.body.status ?? current.status;
+    const nextPetId   = req.body.petId   ?? String(current.petId);
+    const nextDate    = req.body.date    ?? current.date;
+    const nextTime    = req.body.time    ?? current.time;
+    const nextStatus  = req.body.status  ?? current.status;
 
     if (nextStatus === 'scheduled') {
       const conflict = await findConflict({
@@ -71,6 +71,34 @@ router.patch('/:id/cancel', async (req, res) => {
 });
 
 /**
+ * PATCH /appointments/:id/complete
+ * (EN) Mark as completed; fix: use array form of document.populate (no chaining)
+ */
+router.patch('/:id/complete', async (req, res) => {
+  try {
+    const appt = await Appointment.findById(req.params.id);
+    if (!appt) return res.status(404).json({ message: 'Appointment not found' });
+
+    if (appt.status === 'cancelled') {
+      return res.status(400).json({ message: 'Cannot complete a cancelled appointment' });
+    }
+
+    appt.status = 'completed';
+    await appt.save();
+
+    // FIX: do not chain populate() on document; use array syntax instead
+    await appt.populate([
+      { path: 'ownerId', select: 'name phone' },
+      { path: 'petId',   select: 'name type'  },
+    ]);
+
+    res.json(appt);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+/**
  * GET /appointments
  */
 router.get('/', async (req, res) => {
@@ -78,9 +106,9 @@ router.get('/', async (req, res) => {
     const { ownerId, petId, status, date } = req.query;
     const filter = {};
     if (ownerId) filter.ownerId = ownerId;
-    if (petId) filter.petId = petId;
-    if (status) filter.status = status;
-    if (date) filter.date = date;
+    if (petId)   filter.petId   = petId;
+    if (status)  filter.status  = status;
+    if (date)    filter.date    = date;
 
     const items = await Appointment.find(filter)
       .sort({ date: 1, time: 1 })
@@ -110,7 +138,7 @@ router.get('/summary', async (req, res) => {
       toDate.setDate(today.getDate() + 6);
 
       from = today.toISOString().slice(0, 10);
-      to = toDate.toISOString().slice(0, 10);
+      to   = toDate.toISOString().slice(0, 10);
     }
 
     const filter = { date: { $gte: from, $lte: to } };
@@ -139,7 +167,7 @@ router.get('/summary', async (req, res) => {
     // Fill missing days with 0s
     const result = [];
     const start = new Date(from);
-    const end = new Date(to);
+    const end   = new Date(to);
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       const dateStr = d.toISOString().slice(0, 10);
       result.push(map[dateStr] || { date: dateStr, total: 0, scheduled: 0, completed: 0, cancelled: 0 });
@@ -183,7 +211,7 @@ router.post('/', async (req, res) => {
       });
     }
 
-    const appt = new Appointment({ petId, ownerId, date, time, reason });
+    const appt  = new Appointment({ petId, ownerId, date, time, reason });
     const saved = await appt.save();
     res.status(201).json(saved);
   } catch (err) {
@@ -201,21 +229,18 @@ router.post('/', async (req, res) => {
  */
 router.put('/:id', async (req, res) => {
   try {
-    const body = req.body || {};
+    const body    = req.body || {};
     const current = await Appointment.findById(req.params.id);
     if (!current) return res.status(404).json({ message: 'Appointment not found' });
 
-    const petId = body.petId || String(current.petId);
-    const date = body.date || current.date;
-    const time = body.time || current.time;
+    const petId  = body.petId  || String(current.petId);
+    const date   = body.date   || current.date;
+    const time   = body.time   || current.time;
     const status = body.status || current.status;
 
     if (status === 'scheduled') {
       const conflict = await findConflict({
-        petId,
-        date,
-        time,
-        excludeId: req.params.id
+        petId, date, time, excludeId: req.params.id
       });
       if (conflict) {
         return res.status(409).json({
@@ -224,11 +249,7 @@ router.put('/:id', async (req, res) => {
       }
     }
 
-    const updated = await Appointment.findByIdAndUpdate(
-      req.params.id,
-      body,
-      { new: true }
-    );
+    const updated = await Appointment.findByIdAndUpdate(req.params.id, body, { new: true });
     res.json(updated);
   } catch (err) {
     if (err && err.code === 11000) {

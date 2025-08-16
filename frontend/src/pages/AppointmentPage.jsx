@@ -36,7 +36,6 @@ export default function AppointmentPage() {
   };
 
   // ---------- date helpers (display <-> ISO) ----------
-  // Convert ISO yyyy-mm-dd to dd/mm/yyyy (for display)
   const isoToDmy = (iso) => {
     if (!iso || typeof iso !== 'string') return '';
     const [y, m, d] = iso.split('-');
@@ -44,7 +43,6 @@ export default function AppointmentPage() {
     return `${d}/${m}/${y}`;
   };
 
-  // Convert dd/mm/yyyy to ISO yyyy-mm-dd. Return null if invalid.
   const dmyToIso = (dmy) => {
     const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec((dmy || '').trim());
     if (!m) return null;
@@ -52,14 +50,13 @@ export default function AppointmentPage() {
     const mm = parseInt(m[2], 10);
     const yyyy = parseInt(m[3], 10);
     const dt = new Date(yyyy, mm - 1, dd);
-    // Validate real calendar date
     if (dt.getFullYear() !== yyyy || dt.getMonth() !== mm - 1 || dt.getDate() !== dd) return null;
     const mmStr = String(mm).padStart(2, '0');
     const ddStr = String(dd).padStart(2, '0');
     return `${yyyy}-${mmStr}-${ddStr}`;
   };
 
-  // (EN) Format while typing: keep only digits and insert slashes as dd/mm/yyyy
+  // auto-insert slash while typing (dd/mm/yyyy)
   const formatDmyMask = (val) => {
     const digits = (val || '').replace(/\D/g, '').slice(0, 8);
     if (digits.length <= 2) return digits;
@@ -67,7 +64,6 @@ export default function AppointmentPage() {
     return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
   };
 
-  // Keep displayDate in sync when formData.date changes (e.g., when editing)
   useEffect(() => {
     setDisplayDate(isoToDmy(formData.date));
   }, [formData.date]);
@@ -82,12 +78,9 @@ export default function AppointmentPage() {
     if (!formData.ownerId) errs.push('Owner is required.');
     if (!formData.petId)   errs.push('Pet is required.');
 
-    // Ensure typed dd/mm/yyyy is parsed into ISO before submit
     const isoFromDisplay = dmyToIso(displayDate);
     if (!isoFromDisplay) errs.push('Date is required in dd/mm/yyyy.');
-    if (isoFromDisplay && !formData.date) {
-      formData.date = isoFromDisplay; // safe set before state commit
-    }
+    if (isoFromDisplay && !formData.date) formData.date = isoFromDisplay;
 
     if (!formData.time) errs.push('Time is required.');
 
@@ -143,7 +136,8 @@ export default function AppointmentPage() {
     try {
       await axios.patch(`${API_APPTS}/${id}/cancel`);
       await refetchAppointments();
-    } catch {
+    } catch (err) {
+      console.error(err);
       alert('Cancel failed');
     }
   };
@@ -153,8 +147,28 @@ export default function AppointmentPage() {
     try {
       await axios.delete(`${API_APPTS}/${id}`);
       await refetchAppointments();
-    } catch {
+    } catch (err) {
+      console.error(err);
       alert('Delete failed');
+    }
+  };
+
+  // prevent stacked popups — confirm once; if API ok then refresh silently
+  const handleComplete = async (id) => {
+    if (!window.confirm('Mark this appointment as completed?')) return;
+
+    try {
+      await axios.patch(`${API_APPTS}/${id}/complete`);
+    } catch (err) {
+      console.error('Complete API error:', err);
+      alert(err?.response?.data?.message || 'Complete failed');
+      return;
+    }
+
+    try {
+      await refetchAppointments();
+    } catch (err) {
+      console.warn('Completed, refresh failed:', err);
     }
   };
 
@@ -164,9 +178,6 @@ export default function AppointmentPage() {
     setDisplayDate('');
     setErrors([]);
   };
-
-  // Table shows dd/mm/yyyy but API stores ISO
-  const formatDMY = (isoDate) => isoToDmy(isoDate) || (isoDate || '');
 
   return (
     <div className="container-page">
@@ -217,11 +228,10 @@ export default function AppointmentPage() {
               </select>
             </div>
 
-            {/* Date (text dd/mm/yyyy + calendar button that opens hidden native date picker) */}
+            {/* Date */}
             <div>
               <label className="text-sm text-slate-600">Date</label>
               <div className="relative mt-1">
-                {/* Visible text input (dd/mm/yyyy) with auto slash insertion */}
                 <input
                   className="input w-full pr-10"
                   type="text"
@@ -230,7 +240,6 @@ export default function AppointmentPage() {
                   onChange={(e) => {
                     const masked = formatDmyMask(e.target.value);
                     setDisplayDate(masked);
-                    // Optionally keep formData.date in sync while typing (when 8 digits typed)
                     const iso = dmyToIso(masked);
                     setFormData(prev => ({ ...prev, date: iso || '' }));
                   }}
@@ -240,8 +249,6 @@ export default function AppointmentPage() {
                     else setFormData({ ...formData, date: '' });
                   }}
                 />
-
-                {/* Calendar button */}
                 <button
                   type="button"
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500"
@@ -249,14 +256,12 @@ export default function AppointmentPage() {
                   onClick={() => {
                     const el = nativeDateRef.current;
                     if (!el) return;
-                    if (el.showPicker) el.showPicker(); // Chrome/Edge
-                    else el.click();                     // Fallback
+                    if (el.showPicker) el.showPicker();
+                    else el.click();
                   }}
                 >
                   📅
                 </button>
-
-                {/* Hidden native date input (keeps ISO, drives the calendar UI) */}
                 <input
                   ref={nativeDateRef}
                   type="date"
@@ -267,9 +272,8 @@ export default function AppointmentPage() {
                     whiteSpace: 'nowrap', border: 0
                   }}
                   onChange={(e) => {
-                    const iso = e.target.value; // yyyy-mm-dd from native picker
+                    const iso = e.target.value;
                     setFormData((prev) => ({ ...prev, date: iso }));
-                    // reflect to display as dd/mm/yyyy
                     if (iso) {
                       const [y, m, d] = iso.split('-');
                       setDisplayDate(`${d}/${m}/${y}`);
@@ -318,7 +322,7 @@ export default function AppointmentPage() {
         </div>
       </div>
 
-      {/* Table – unchanged, just formats ISO to dd/mm/yyyy for display */}
+      {/* Table */}
       <div className="table-wrap">
         <table className="table">
           <thead>
@@ -331,7 +335,7 @@ export default function AppointmentPage() {
               <tr><td colSpan="7" className="text-center py-6 text-slate-500">No appointments</td></tr>
             ) : appointments.map(appt => (
               <tr key={appt._id}>
-                <td>{formatDMY(appt.date)}</td>
+                <td>{isoToDmy(appt.date) || appt.date}</td>
                 <td>{appt.time}</td>
                 <td>{appt.petId?.name || '—'}</td>
                 <td>{appt.ownerId?.name || '—'}</td>
@@ -346,7 +350,14 @@ export default function AppointmentPage() {
                   <div className="flex flex-wrap gap-2">
                     <button className="btn btn-ghost" onClick={() => handleEdit(appt)}>Edit</button>
                     {appt.status === 'scheduled' && (
-                      <button className="btn btn-secondary" onClick={() => handleCancel(appt._id)}>Cancel</button>
+                      <>
+                        <button className="btn btn-success" onClick={() => handleComplete(appt._id)}>
+                          Complete
+                        </button>
+                        <button className="btn btn-secondary" onClick={() => handleCancel(appt._id)}>
+                          Cancel
+                        </button>
+                      </>
                     )}
                     <button className="btn btn-danger" onClick={() => handleDelete(appt._id)}>Delete</button>
                   </div>
