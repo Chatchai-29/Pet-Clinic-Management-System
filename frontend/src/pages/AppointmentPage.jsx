@@ -153,11 +153,10 @@ export default function AppointmentPage() {
     }
   };
 
-  // FIX: prevent stacked popups — confirm once; if API ok then refresh silently
+  // prevent stacked popups — confirm once; if API ok then refresh silently
   const handleComplete = async (id) => {
     if (!window.confirm('Mark this appointment as completed?')) return;
 
-    // Only this API error shows alert
     try {
       await axios.patch(`${API_APPTS}/${id}/complete`);
     } catch (err) {
@@ -166,7 +165,6 @@ export default function AppointmentPage() {
       return;
     }
 
-    // Refresh errors won't trigger user alert (avoid second popup)
     try {
       await refetchAppointments();
     } catch (err) {
@@ -180,8 +178,6 @@ export default function AppointmentPage() {
     setDisplayDate('');
     setErrors([]);
   };
-
-  const formatDMY = (isoDate) => isoToDmy(isoDate) || (isoDate || '');
 
   return (
     <div className="container-page">
@@ -334,41 +330,41 @@ export default function AppointmentPage() {
               <th>Date</th><th>Time</th><th>Pet</th><th>Owner</th><th>Reason</th><th>Status</th><th>Actions</th>
             </tr>
           </thead>
-        <tbody>
-          {appointments.length === 0 ? (
-            <tr><td colSpan="7" className="text-center py-6 text-slate-500">No appointments</td></tr>
-          ) : appointments.map(appt => (
-            <tr key={appt._id}>
-              <td>{isoToDmy(appt.date) || appt.date}</td>
-              <td>{appt.time}</td>
-              <td>{appt.petId?.name || '—'}</td>
-              <td>{appt.ownerId?.name || '—'}</td>
-              <td>{appt.reason || '—'}</td>
-              <td>
-                <span className={`badge ${
-                  appt.status === 'scheduled' ? 'badge-yellow' :
-                  appt.status === 'completed' ? 'badge-green' : 'badge-red'
-                }`}>{appt.status}</span>
-              </td>
-              <td>
-                <div className="flex flex-wrap gap-2">
-                  <button className="btn btn-ghost" onClick={() => handleEdit(appt)}>Edit</button>
-                  {appt.status === 'scheduled' && (
-                    <>
-                      <button className="btn btn-success" onClick={() => handleComplete(appt._id)}>
-                        Complete
-                      </button>
-                      <button className="btn btn-secondary" onClick={() => handleCancel(appt._id)}>
-                        Cancel
-                      </button>
-                    </>
-                  )}
-                  <button className="btn btn-danger" onClick={() => handleDelete(appt._id)}>Delete</button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
+          <tbody>
+            {appointments.length === 0 ? (
+              <tr><td colSpan="7" className="text-center py-6 text-slate-500">No appointments</td></tr>
+            ) : appointments.map(appt => (
+              <tr key={appt._id}>
+                <td>{isoToDmy(appt.date) || appt.date}</td>
+                <td>{appt.time}</td>
+                <td>{appt.petId?.name || '—'}</td>
+                <td>{appt.ownerId?.name || '—'}</td>
+                <td>{appt.reason || '—'}</td>
+                <td>
+                  <span className={`badge ${
+                    appt.status === 'scheduled' ? 'badge-yellow' :
+                    appt.status === 'completed' ? 'badge-green' : 'badge-red'
+                  }`}>{appt.status}</span>
+                </td>
+                <td>
+                  <div className="flex flex-wrap gap-2">
+                    <button className="btn btn-ghost" onClick={() => handleEdit(appt)}>Edit</button>
+                    {appt.status === 'scheduled' && (
+                      <>
+                        <button className="btn btn-success" onClick={() => handleComplete(appt._id)}>
+                          Complete
+                        </button>
+                        <button className="btn btn-secondary" onClick={() => handleCancel(appt._id)}>
+                          Cancel
+                        </button>
+                      </>
+                    )}
+                    <button className="btn btn-danger" onClick={() => handleDelete(appt._id)}>Delete</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
         </table>
       </div>
     </div>
