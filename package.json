@@ -8,10 +8,15 @@
     "dev": "concurrently \"npm run dev --prefix backend\" \"npm start --prefix frontend\""
   },
   "devDependencies": {
-    "chai": "^5.1.2",
-    "concurrently": "^7.6.0",
-    "mocha": "^11.0.1"
+    "chai": "^5.2.1",
+    "concurrently": "^9.2.0",
+    "mocha": "^11.7.1",
+    "sinon": "^21.0.0"
   },
+  "proxy": "http://localhost:5001",
   "author": "Task Manager Team",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "react-datepicker": "^8.5.0"
+  }
 }
