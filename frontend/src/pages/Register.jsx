@@ -1,53 +1,62 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
+import api from '../api/axios';
+import { setToken } from '../utils/auth';
 import { useNavigate } from 'react-router-dom';
-import axiosInstance from '../axiosConfig';
 
-const Register = () => {
-  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
-  const navigate = useNavigate();
+export default function Register() {
+  const nav = useNavigate();
+  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  const handleSubmit = async (e) => {
+  const submit = async (e) => {
     e.preventDefault();
+    setErrorMsg(''); setLoading(true);
     try {
-      await axiosInstance.post('/api/auth/register', formData);
-      alert('Registration successful. Please log in.');
-      navigate('/login');
-    } catch (error) {
-      alert('Registration failed. Please try again.');
-    }
+      const res = await api.post('/api/auth/register', form);
+      if (res.data?.token) setToken(res.data.token);
+      nav('/profile');
+    } catch (err) {
+      setErrorMsg(err?.response?.data?.message || 'Registration failed');
+      console.error(err);
+    } finally { setLoading(false); }
   };
 
   return (
-    <div className="max-w-md mx-auto mt-20">
-      <form onSubmit={handleSubmit} className="bg-white p-6 shadow-md rounded">
-        <h1 className="text-2xl font-bold mb-4 text-center">Register</h1>
-        <input
-          type="text"
-          placeholder="Name"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="w-full mb-4 p-2 border rounded"
-        />
-        <input
-          type="email"
-          placeholder="Email"
-          value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          className="w-full mb-4 p-2 border rounded"
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={formData.password}
-          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-          className="w-full mb-4 p-2 border rounded"
-        />
-        <button type="submit" className="w-full bg-green-600 text-white p-2 rounded">
-          Register
-        </button>
-      </form>
+    <div className="container-page" style={{ maxWidth: 420 }}>
+      <div className="card">
+        <div className="card-header">Create account</div>
+        <div className="card-body">
+          {errorMsg && (
+            <div style={{ background:'#ffe9e9', color:'#a40000', padding:10, borderRadius:10, marginBottom:10 }}>
+              {errorMsg}
+            </div>
+          )}
+          <form className="form-grid" onSubmit={submit}>
+            <div className="sm:col-span-2">
+              <label>Name</label>
+              <input className="input" value={form.name} onChange={(e)=>setForm({...form, name:e.target.value})} required />
+            </div>
+            <div className="sm:col-span-2">
+              <label>Email</label>
+              <input className="input" type="email" value={form.email} onChange={(e)=>setForm({...form, email:e.target.value})} required />
+            </div>
+            <div className="sm:col-span-2">
+              <label>Password</label>
+              <input className="input" type="password" value={form.password} onChange={(e)=>setForm({...form, password:e.target.value})} required />
+            </div>
+            <div className="form-actions sm:col-span-2">
+              <button type="submit" className="btn btn-primary" disabled={loading}>
+                {loading ? 'Creating...' : 'Create account'}
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={()=>nav('/login')} disabled={loading}>
+                Back to login
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <p className="helper" style={{ marginTop: 8 }}>Password must be strong enough.</p>
     </div>
   );
-};
-
-export default Register;
+}
