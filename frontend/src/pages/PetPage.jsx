@@ -1,266 +1,125 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 
-const API_PETS = 'http://localhost:5001/pets';
-const API_OWNERS = 'http://localhost:5001/owners';
+// ✅ ฟังก์ชันแปลงวันที่เป็น YYYY/MM/DD
+const formatYMD = (value) => {
+  if (!value) return "—";
+  const raw = typeof value === "string" ? value.split("T")[0] : value;
+  const d = new Date(value);
+  if (!isNaN(d)) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}/${m}/${day}`;
+  }
+  const [y, m, day] = String(raw).split("-");
+  if (y && m && day) return `${y}/${m}/${day}`;
+  return "—";
+};
 
 export default function PetPage() {
   const [pets, setPets] = useState([]);
-  const [owners, setOwners] = useState([]);
-<<<<<<< HEAD
   const [formData, setFormData] = useState({
-    name: '',
-    type: '',
-    breed: '',
-    dob: '',
-    ownerId: ''
+    name: "",
+    species: "",
+    breed: "",
+    dob: "",
   });
-  const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
     fetchPets();
-    fetchOwners();
   }, []);
 
   const fetchPets = async () => {
     try {
-      const res = await axios.get(API_PETS);
+      const res = await axios.get("http://localhost:5001/api/pets");
       setPets(res.data);
     } catch (err) {
       console.error(err);
     }
   };
 
-  const fetchOwners = async () => {
-    try {
-      const res = await axios.get(API_OWNERS);
-      setOwners(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-=======
-  const [formData, setFormData] = useState({ name:'', type:'', breed:'', dob:'', ownerId:'' });
-  const [editingId, setEditingId] = useState(null);
-
-  useEffect(() => { fetchAll(); }, []);
-  const fetchAll = async () => {
-    const [p, o] = await Promise.all([axios.get(API_PETS), axios.get(API_OWNERS)]);
-    setPets(p.data || []); setOwners(o.data || []);
->>>>>>> 57fb742d19ed7b34bdf6d49578cb77dc5f47f11d
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-<<<<<<< HEAD
     try {
-      if (editingId) {
-        await axios.put(`${API_PETS}/${editingId}`, formData);
-      } else {
-        await axios.post(API_PETS, formData);
-      }
-      setFormData({ name: '', type: '', breed: '', dob: '', ownerId: '' });
-      setEditingId(null);
+      await axios.post("http://localhost:5001/api/pets", formData);
+      setFormData({ name: "", species: "", breed: "", dob: "" });
       fetchPets();
     } catch (err) {
       console.error(err);
     }
-=======
-    if (editingId) await axios.put(`${API_PETS}/${editingId}`, formData);
-    else await axios.post(API_PETS, formData);
-    setFormData({ name:'', type:'', breed:'', dob:'', ownerId:'' }); setEditingId(null);
-    fetchAll();
->>>>>>> 57fb742d19ed7b34bdf6d49578cb77dc5f47f11d
-  };
-
-  const handleEdit = (pet) => {
-    setEditingId(pet._id);
-    setFormData({
-<<<<<<< HEAD
-      name: pet.name,
-      type: pet.type,
-      breed: pet.breed,
-      dob: pet.dob ? pet.dob.split('T')[0] : '',
-      ownerId: pet.ownerId?._id || ''
-=======
-      name: pet.name, type: pet.type, breed: pet.breed || '',
-      dob: pet.dob ? pet.dob.split('T')[0] : '',
-      ownerId: pet.ownerId?._id || pet.ownerId || ''
->>>>>>> 57fb742d19ed7b34bdf6d49578cb77dc5f47f11d
-    });
-  };
-
-  const handleDelete = async (id) => {
-<<<<<<< HEAD
-    if (window.confirm('Delete this pet?')) {
-      try {
-        await axios.delete(`${API_PETS}/${id}`);
-        fetchPets();
-      } catch (err) {
-        console.error(err);
-      }
-    }
   };
 
   return (
-    <div>
-      <h1>Pet Management</h1>
-      <form onSubmit={handleSubmit}>
+    <div className="p-6">
+      <h2 className="text-xl font-bold mb-4">Pet Management</h2>
+
+      {/* ฟอร์มเพิ่มสัตว์ */}
+      <form onSubmit={handleSubmit} className="mb-6 space-y-3">
         <input
           type="text"
-          placeholder="Pet Name"
+          name="name"
+          placeholder="Name"
+          className="border p-2 w-full"
           value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          required
+          onChange={handleChange}
         />
         <input
           type="text"
-          placeholder="Type"
-          value={formData.type}
-          onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-          required
+          name="species"
+          placeholder="Species"
+          className="border p-2 w-full"
+          value={formData.species}
+          onChange={handleChange}
         />
         <input
           type="text"
+          name="breed"
           placeholder="Breed"
+          className="border p-2 w-full"
           value={formData.breed}
-          onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
+          onChange={handleChange}
         />
         <input
           type="date"
+          name="dob"
+          className="border p-2 w-full"
           value={formData.dob}
-          onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
+          onChange={handleChange}
         />
-        <select
-          value={formData.ownerId}
-          onChange={(e) => setFormData({ ...formData, ownerId: e.target.value })}
-          required
-        >
-          <option value="">Select Owner</option>
-          {owners.map((o) => (
-            <option key={o._id} value={o._id}>
-              {o.name}
-            </option>
-          ))}
-        </select>
-        <button type="submit">{editingId ? 'Update' : 'Add'} Pet</button>
+        <button type="submit" className="bg-blue-500 text-white px-4 py-2">
+          Add Pet
+        </button>
       </form>
 
-      <table border="1">
+      {/* ตารางสัตว์ */}
+      <table className="table-auto border-collapse border border-gray-400 w-full">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Breed</th>
-            <th>DOB</th>
-            <th>Owner</th>
-            <th>Actions</th>
+            <th className="border border-gray-400 px-4 py-2">Name</th>
+            <th className="border border-gray-400 px-4 py-2">Species</th>
+            <th className="border border-gray-400 px-4 py-2">Breed</th>
+            <th className="border border-gray-400 px-4 py-2">Date of Birth</th>
           </tr>
         </thead>
         <tbody>
           {pets.map((pet) => (
             <tr key={pet._id}>
-              <td>{pet.name}</td>
-              <td>{pet.type}</td>
-              <td>{pet.breed}</td>
-              <td>{pet.dob ? pet.dob.split('T')[0] : ''}</td>
-              <td>{pet.ownerId?.name || 'N/A'}</td>
-              <td>
-                <button onClick={() => handleEdit(pet)}>Edit</button>
-                <button onClick={() => handleDelete(pet._id)}>Delete</button>
+              <td className="border border-gray-400 px-4 py-2">{pet.name}</td>
+              <td className="border border-gray-400 px-4 py-2">{pet.species}</td>
+              <td className="border border-gray-400 px-4 py-2">{pet.breed}</td>
+              {/* ✅ ใช้ฟังก์ชันฟอร์แมตวันที่ */}
+              <td className="border border-gray-400 px-4 py-2">
+                {formatYMD(pet.dob)}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-=======
-    if (!window.confirm('Delete this pet?')) return;
-    await axios.delete(`${API_PETS}/${id}`);
-    fetchAll();
-  };
-
-  return (
-    <div className="container-page">
-      <div className="mb-4">
-        <h1 style={{ margin: 0 }}>Pets</h1>
-        <p className="helper">Manage pet records and link to an owner</p>
-      </div>
-
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-header">{editingId ? 'Edit pet' : 'Add pet'}</div>
-        <div className="card-body">
-          <form className="form-grid" onSubmit={handleSubmit}>
-            <div>
-              <label>Pet name</label>
-              <input className="input" value={formData.name}
-                     onChange={(e)=>setFormData({ ...formData, name:e.target.value })}
-                     placeholder="e.g., Lucky" required />
-            </div>
-            <div>
-              <label>Type</label>
-              <input className="input" value={formData.type}
-                     onChange={(e)=>setFormData({ ...formData, type:e.target.value })}
-                     placeholder="Dog, Cat..." required />
-            </div>
-            <div>
-              <label>Breed</label>
-              <input className="input" value={formData.breed}
-                     onChange={(e)=>setFormData({ ...formData, breed:e.target.value })}
-                     placeholder="(optional)" />
-            </div>
-            <div>
-              <label>Date of birth</label>
-              <input className="input" type="date" value={formData.dob}
-                     onChange={(e)=>setFormData({ ...formData, dob:e.target.value })} />
-            </div>
-            <div>
-              <label>Owner</label>
-              <select className="select" value={formData.ownerId}
-                      onChange={(e)=>setFormData({ ...formData, ownerId:e.target.value })} required>
-                <option value="">Select owner</option>
-                {owners.map(o => <option key={o._id} value={o._id}>{o.name}</option>)}
-              </select>
-            </div>
-            <div className="form-actions" style={{ gridColumn: '1 / -1' }}>
-              <button type="submit" className="btn btn-primary">
-                {editingId ? 'Update pet' : 'Add pet'}
-              </button>
-              {editingId && (
-                <button type="button" className="btn btn-secondary" onClick={() => {
-                  setEditingId(null); setFormData({ name:'', type:'', breed:'', dob:'', ownerId:'' });
-                }}>Cancel</button>
-              )}
-            </div>
-          </form>
-        </div>
-      </div>
-
-      <div className="table-wrap">
-        <table className="table">
-          <thead>
-            <tr><th>Name</th><th>Type</th><th>Breed</th><th>DOB</th><th>Owner</th><th style={{width:200}}>Actions</th></tr>
-          </thead>
-          <tbody>
-            {pets.length === 0 ? (
-              <tr><td className="empty" colSpan="6">No pets</td></tr>
-            ) : pets.map((pet) => (
-              <tr key={pet._id}>
-                <td>{pet.name}</td>
-                <td>{pet.type}</td>
-                <td>{pet.breed || '—'}</td>
-                <td>{pet.dob ? pet.dob.split('T')[0] : '—'}</td>
-                <td>{pet.ownerId?.name || '—'}</td>
-                <td>
-                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                    <button className="btn btn-ghost" onClick={()=>handleEdit(pet)}>Edit</button>
-                    <button className="btn btn-danger" onClick={()=>handleDelete(pet._id)}>Delete</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
->>>>>>> 57fb742d19ed7b34bdf6d49578cb77dc5f47f11d
     </div>
   );
 }
