@@ -1,42 +1,61 @@
 // backend/server.js
+require('dotenv').config();
+
 const express = require('express');
-const dotenv = require('dotenv');
 const cors = require('cors');
 const mongoose = require('mongoose');
-const connectDB = require('./config/db');
 
-dotenv.config();
+const connectDB = require('./config/db'); // your Mongo connection helper
 
 const app = express();
 
-/* -----------------------------
-   CORS & body parser (MUST come before any routes)
--------------------------------- */
-const ALLOWED_ORIGINS = [
+const PORT = process.env.PORT || 5001;
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
+/* -------------------------------------------
+   CORS (allow specific origins incl. EC2 IP)
+-------------------------------------------- */
+const ALLOWED_ORIGINS = new Set([
   'http://localhost:3000',
-  'http://192.168.0.134:3000', // add your LAN IP if you open from another device
-];
+  'http://127.0.0.1:3000',
+  'http://192.168.0.134:3000',
+
+  // EC2 Public IP (frontend, direct API, and optional http/https)
+  'http://3.107.84.70',
+  'http://3.107.84.70:3000',
+  'http://3.107.84.70:5001',
+  'https://3.107.84.70',
+]);
 
 const corsOptions = {
-  origin: function (origin, cb) {
-    // Allow curl/Postman or same-origin (no Origin header)
+  origin(origin, cb) {
+    // Allow non-browser clients (curl/Postman) or same-origin requests
     if (!origin) return cb(null, true);
-    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
-    // Block unknown origins in dev (returning false means CORS will fail)
-    return cb(null, false);
+    if (ALLOWED_ORIGINS.has(origin)) return cb(null, true);
+
+    // For assignment/demo, you may relax in non-production:
+    if (NODE_ENV !== 'production') return cb(null, true);
+
+    return cb(new Error(`Not allowed by CORS: ${origin}`));
   },
-  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false,
 };
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
-app.use(express.json());
 
-/* -----------------------------
-   Lazy route loader
--------------------------------- */
+/* -------------------------------------------
+   Parsers
+-------------------------------------------- */
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true }));
+
+/* -------------------------------------------
+   Lazy route loader (keeps app running even if
+   some route modules are missing)
+-------------------------------------------- */
 function tryRequire(modulePath) {
   try {
     return require(modulePath);
@@ -49,86 +68,100 @@ function tryRequire(modulePath) {
   }
 }
 
-/* -----------------------------
-   Routes
--------------------------------- */
-const historyRoutes = require('./routes/historyRoutes');
-
+/* -------------------------------------------
+   Routes (mount both short and /api/* paths
+   where useful to avoid FE path mismatch)
+-------------------------------------------- */
+const historyRoutes = tryRequire('./routes/historyRoutes');
 const appointmentRoutes = tryRequire('./routes/appointmentRoutes');
 const ownerRoutes = tryRequire('./routes/ownerRoutes');
 const petRoutes = tryRequire('./routes/petRoutes');
 const authRoutes = tryRequire('./routes/authRoutes');
 const taskRoutes = tryRequire('./routes/taskRoutes');
 
-// History routes (both paths to avoid FE mismatch)
-app.use('/history', historyRoutes);
-app.use('/api/history', historyRoutes);
+// History
+if (historyRoutes) {
+  app.use('/history', historyRoutes);
+  app.use('/api/history', historyRoutes);
+  console.log('[route] /history & /api/history mounted');
+}
 
+// Appointments
 if (appointmentRoutes) {
   app.use('/appointments', appointmentRoutes);
-  console.log('[route] /appointments mounted');
+  app.use('/api/appointments', appointmentRoutes);
+  console.log('[route] /appointments & /api/appointments mounted');
 }
 
+// Owners
 if (ownerRoutes) {
   app.use('/owners', ownerRoutes);
-  console.log('[route] /owners mounted');
+  app.use('/api/owners', ownerRoutes);
+  console.log('[route] /owners & /api/owners mounted');
 }
 
+// Pets
 if (petRoutes) {
   app.use('/pets', petRoutes);
-  console.log('[route] /pets mounted');
+  app.use('/api/pets', petRoutes);
+  console.log('[route] /pets & /api/pets mounted');
 }
 
+// Auth
 if (authRoutes) {
   app.use('/auth', authRoutes);
   app.use('/api/auth', authRoutes);
-  console.log('[route] /api/auth & /auth mounted');
+  console.log('[route] /auth & /api/auth mounted');
 }
 
+// Tasks
 if (taskRoutes) {
   app.use('/tasks', taskRoutes);
   app.use('/api/tasks', taskRoutes);
-  console.log('[route] /api/tasks & /tasks mounted');
+  console.log('[route] /tasks & /api/tasks mounted');
 }
 
-// Health check
+/* -------------------------------------------
+   Health checks / root
+-------------------------------------------- */
 app.get('/', (_req, res) => {
-  res.send('API is running');
+  res.send('Backend is running on EC2 with PM2 🚀');
 });
 
-/* -----------------------------
-   Start server
--------------------------------- */
-const PORT = process.env.PORT || 5001;
-const isTest = process.env.NODE_ENV === 'test';
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', env: NODE_ENV });
+});
 
+/* -------------------------------------------
+   Start server (bind 0.0.0.0 for external access)
+-------------------------------------------- */
 async function start() {
   try {
-    if (!isTest) {
+    if (NODE_ENV !== 'test') {
       await connectDB();
-      console.log('MongoDB connected successfully');
+      console.log('[db] MongoDB connected');
     } else {
-      console.log('Test mode: skip DB connection & listening');
+      console.log('[db] test mode: skipping DB connect');
     }
 
-    if (!isTest) {
-      app.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
+    if (NODE_ENV !== 'test') {
+      const server = app.listen(PORT, '0.0.0.0', () =>
+        console.log(`[http] Listening on 0.0.0.0:${PORT} (${NODE_ENV})`)
+      );
+
+      // Graceful shutdown
+      mongoose.connection.on('error', (err) => {
+        console.error('[db] error:', err);
+      });
+      process.on('SIGINT', () => {
+        mongoose.connection.close(() => {
+          console.log('[db] connection closed');
+          server.close(() => process.exit(0));
+        });
       });
     }
-
-    mongoose.connection.on('error', (err) => {
-      console.error('MongoDB connection error:', err);
-    });
-
-    process.on('SIGINT', () => {
-      mongoose.connection.close(() => {
-        console.log('MongoDB connection closed');
-        process.exit(0);
-      });
-    });
   } catch (err) {
-    console.error('Failed to connect to MongoDB:', err);
+    console.error('[start] fatal:', err);
     process.exit(1);
   }
 }
