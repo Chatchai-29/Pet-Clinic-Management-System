@@ -1,9 +1,10 @@
 import axios from 'axios';
 
+// backend EC2
 const axiosInstance = axios.create({
-  baseURL: 'http://localhost:5001', // local
-  //baseURL: 'http://52.62.227.183', // live
+  baseURL: 'http://52.62.227.183:5001/api',
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 });
 
 export default axiosInstance;

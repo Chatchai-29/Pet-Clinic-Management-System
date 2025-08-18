@@ -15,37 +15,37 @@ export default function Login() {
   const onChange = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
   const submit = async (e) => {
-    e.preventDefault();
-    setErrorMsg('');
-    setLoading(true);
-    try {
-      // login
-      const res = await api.post('/api/auth/login', form);
-      if (res.data?.token) {
-        setToken(res.data.token);
+  e.preventDefault();
+  setErrorMsg('');
+  setLoading(true);
+  try {
+    // login → call /api/auth/login
+    const res = await api.post('/api/auth/login', form);
+    if (res.data?.token) {
+      setToken(res.data.token);
 
-       
-        let me;
-        try {
-          me = await api.get('/api/auth/me');
-        } catch {
-          me = await api.get('/api/auth/profile');
-        }
-        login(me.data);
-
-        // Dashboard
-        nav('/dashboard');
-      } else {
-        setErrorMsg('Login response missing token');
+      // get profile
+      let me;
+      try {
+        me = await api.get('/api/auth/me');
+      } catch {
+        me = await api.get('/api/auth/profile');
       }
-    } catch (err) {
-      const status = err?.response?.status;
-      if (status === 401) setErrorMsg('Invalid email or password');
-      else setErrorMsg(err?.response?.data?.message || 'Error during login');
-    } finally {
-      setLoading(false);
+      login(me.data);
+
+      // Dashboard
+      nav('/dashboard');
+    } else {
+      setErrorMsg('Login response missing token');
     }
-  };
+  } catch (err) {
+    const status = err?.response?.status;
+    if (status === 401) setErrorMsg('Invalid email or password');
+    else setErrorMsg(err?.response?.data?.message || 'Error during login');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="container-page" style={{ maxWidth: 420 }}>
