@@ -11,13 +11,12 @@ export default function Profile() {
     email: '',
     university: '',
     address: '',
-    password: '' // ใส่เฉพาะตอนต้องการเปลี่ยน
+    password: ''
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // ชื่อย่อสำหรับ avatar
   const initials = useMemo(() => {
     const src = form.name?.trim() || form.email?.trim() || '?';
     return src

@@ -5,7 +5,7 @@ import api from '../api/axios';
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  // โหลดค่าจาก localStorage แบบปลอดภัย
+  // Safe load from localStorage
   const [user, setUser] = useState(() => {
     try {
       const saved = localStorage.getItem('user');
@@ -16,20 +16,14 @@ export const AuthProvider = ({ children }) => {
     }
   });
 
-  // ถ้ามี token ให้ดึงโปรไฟล์ทันที (กันรีเฟรชแล้วเมนูหาย)
+  // Fetch profile when token exists
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
     (async () => {
       try {
-        // ใช้ /api/auth/me เป็นหลัก ถ้าไม่มีค่อย fallback ไป /api/auth/profile
-        let me;
-        try {
-          me = await api.get('/api/auth/me');
-        } catch {
-          me = await api.get('/api/auth/profile');
-        }
+        const me = await api.get('/api/auth/me'); // now exists on backend
         setUser(me.data);
         localStorage.setItem('user', JSON.stringify(me.data));
       } catch (err) {
