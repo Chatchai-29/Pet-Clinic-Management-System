@@ -1,28 +1,38 @@
-Test
+// Pet Clinic Management System
 
-**Task Manager Application Overview:The task manager application is designed to help users efficiently manage their tasks and responsibilities by providing a user-friendly interface for creating, viewing, updating, and deleting tasks. It includes essential features such as secure user authentication, allowing individuals to sign up and log in to their accounts, as well as profile management to update personal information. With built-in validation such as input field validation and email validation, the application ensures a seamless user experience while enhancing productivity and organization in both personal and professional settings. **
+A full-stack web application for managing pet clinic operations.  
+This project is developed as part of IFN636 – Software Life Cycle Management.
 
-**This apps **contain** the following features:**
+// Features
+- Owner and Pet management  
+- Appointment scheduling  
+- Dashboard with search and validation  
+- Backend API with Express.js + MongoDB  
+- Frontend with React.js  
+- Deployment on AWS EC2 using PM2  
+- GitHub Actions CI/CD pipeline  
 
-* Signup
-* Login
-* Logout
-* Update profile
-* Add tasks
-* View tasks
-* Update tasks
-* Delete tasks
+// Project Structure
 
-**This **app**lication** is**almost **a** precompiled** app**. However, students will develop some features,**such as adding tasks, viewing tasks, updating tasks, and **deleting** tasks**. **Students** will interact with GitHub when they develop the features.**
 
----
+## Deployment
+- **Backend**: `http://3.107.84.70:5001`  
+- **Frontend**: `http://3.107.84.70:3000`  
 
-**Prerequisite:** Please install the following software and create account in following web tools** **
+## CI/CD
+- GitHub Actions (build, test, deploy)  
+- Auto-deploys to AWS EC2 on push to `main`  
+- Managed with **PM2** for process management  
 
-* **Nodejs [**[https://nodejs.org/en](https://nodejs.org/en)]** **
-* **Git [**[https://git-scm.com/](https://git-scm.com/)]** **
-* **VS code editor** [[https://code.visualstudio.com/](https://code.visualstudio.com/)]** **
-* **MongoDB Account** [[https://account.mongodb.com/account/login](https://account.mongodb.com/account/login)]** - In tutorial, we have also showed how can you create account and database: follow step number 2.**
-* **GitHub Account** [[https://github.com/signup?source=login](https://github.com/signup?source=login)]** **
+## Run Locally
+```bash
+# Backend
+cd backend
+npm install
+npm start
 
----
+# Frontend
+cd frontend
+npm install
+npm start
+
