@@ -31,9 +31,7 @@ const ALLOW_LIST = new Set([
 
 const corsOptions = {
   origin(origin, cb) {
- 
     if (!origin) return cb(null, true);
-
 
     if (NODE_ENV !== 'production') return cb(null, true);
 
@@ -96,8 +94,11 @@ app.get('/health', (_req, res) => {
 // ================== Start server ==================
 async function start() {
   try {
-    await connectDB();
-    console.log('[db] MongoDB connected');
+    // 🟢 CONNECT DB 
+    if (NODE_ENV !== 'test') {
+      await connectDB();
+      console.log('[db] MongoDB connected');
+    }
 
     // bind 0.0.0.0 
     const server = app.listen(PORT, '0.0.0.0', () => {
@@ -125,6 +126,9 @@ async function start() {
   }
 }
 
-start();
+// 🟢 RUN SERVER Only when not test
+if (NODE_ENV !== 'test') {
+  start();
+}
 
 module.exports = app;

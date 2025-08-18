@@ -37,7 +37,8 @@ jobs:
         working-directory: ./backend
         env:
           NODE_ENV: test
-        run: npm test
+        run: NODE_ENV=test npm test
+
 
   frontend-build:
     name: Frontend Build
