@@ -1,0 +1,10 @@
+MONGO_URI=<YOUR MONGODB CONNECTION STRING>
+JWT_SECRET=2J8zqkP7VN6bxzg+Wy7DQZsd3Yx8mF3Bl0kch6HYtFs=
+PORT=5001
+
+//.env my project
+MONGO_URI=mongodb+srv://jjunejune:Test1234@ifn636.bk2wnls.mongodb.net/Pet-Clinic-Management-System?retryWrites=true&w=majority&appName=IFN636
+JWT_SECRET=2J8zqkP7VN6bxzg+Wy7DQZsd3Yx8mF3Bl0kch6HYtFs=
+PORT=5001
+CORS_ORIGIN=http://3.106.237.251 << change this when Public IP has changed
+NODE_ENV=production

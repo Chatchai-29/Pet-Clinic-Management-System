@@ -12,11 +12,11 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
-// ================== CORS ==================
+// ================== Add New IP here ================== CORS ==================
 const ALLOW_LIST = new Set([
   // Frontend EC2 
-  'http://52.62.227.183',
-  'http://52.62.227.183:3000',
+  'http://3.106.237.251',
+  'http://3.106.237.251:3000',
 
   'http://13.239.36.125',
   'http://13.239.36.125:3000',
