@@ -15,14 +15,10 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 // ================== Add New IP here ================== CORS ==================
 const ALLOW_LIST = new Set([
   // Frontend EC2 
-  'http://3.106.237.251',
-  'http://3.106.237.251:3000',
-
-  'http://13.239.36.125',
-  'http://13.239.36.125:3000',
-  'http://3.107.84.70',
-  'http://3.107.84.70:3000',
-  'http://3.107.84.70:5001',
+  'http://3.107.206.208',
+  'http://3.107.206.208:3000',
+  'http://3.107.206.208:5001',
+ 
 
   // Local dev
   'http://localhost:3000',

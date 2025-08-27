@@ -183,7 +183,7 @@ export default function AppointmentPage() {
     <div className="container-page">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Appointments</h1>
-        <p className="text-slate-600">Book, edit, cancel appointments with clean UI.</p>
+        <p className="text-slate-600">Book, edit, cancel appointments.</p>
       </div>
 
       {errors.length > 0 && (
